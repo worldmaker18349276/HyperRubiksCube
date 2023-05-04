@@ -314,3 +314,94 @@ record Cell4(Vector4 Normal, List<Vector4> Vertices, List<Face4Indices> FaceIndi
         );
     }
 }
+
+static class HyperCube
+{
+    public static List<Cell4> makeHyperCube(float cellHeight)
+    {
+        var cube = Cell3.Cube;
+
+        return new List<Cell4> {
+            new Cell4(
+                Normal: new( 1, 0, 0, 0),
+                Vertices: cube.Vertices
+                    .Select(v => new Vector4(1 + cellHeight, v.X, v.Y, v.Z))
+                    .ToList(),
+                FaceIndices: cube.FaceIndices
+                    .Select(f => new Face4Indices(new Vector4(0, f.Normal.X, f.Normal.Y, f.Normal.Z), f.Vertices))
+                    .ToList(),
+                Color: Colors.Blue
+            ),
+            new Cell4(
+                Normal: new(-1, 0, 0, 0),
+                Vertices: cube.Vertices
+                    .Select(v => new Vector4(- 1 - cellHeight, v.Z, v.Y, v.X))
+                    .ToList(),
+                FaceIndices: cube.FaceIndices
+                    .Select(f => new Face4Indices(new Vector4(0, f.Normal.Z, f.Normal.Y, f.Normal.X), f.Vertices))
+                    .ToList(),
+                Color: Colors.Green
+            ),
+            new Cell4(
+                Normal: new( 0, 1, 0, 0),
+                Vertices: cube.Vertices
+                    .Select(v => new Vector4(v.X, 1 + cellHeight, v.Z, v.Y))
+                    .ToList(),
+                FaceIndices: cube.FaceIndices
+                    .Select(f => new Face4Indices(new Vector4(f.Normal.X, 0, f.Normal.Z, f.Normal.Y), f.Vertices))
+                    .ToList(),
+                Color: Colors.White
+            ),
+            new Cell4(
+                Normal: new( 0,-1, 0, 0),
+                Vertices: cube.Vertices
+                    .Select(v => new Vector4(v.Z, -1 - cellHeight, v.X, v.Y))
+                    .ToList(),
+                FaceIndices: cube.FaceIndices
+                    .Select(f => new Face4Indices(new Vector4(f.Normal.Z, 0, f.Normal.X, f.Normal.Y), f.Vertices))
+                    .ToList(),
+                Color: Colors.Yellow
+            ),
+            new Cell4(
+                Normal: new( 0, 0, 1, 0),
+                Vertices: cube.Vertices
+                    .Select(v => new Vector4(v.Y, v.Z, 1 + cellHeight, v.X))
+                    .ToList(),
+                FaceIndices: cube.FaceIndices
+                    .Select(f => new Face4Indices(new Vector4(f.Normal.Y, f.Normal.Z, 0, f.Normal.X), f.Vertices))
+                    .ToList(),
+                Color: Colors.Red
+            ),
+            new Cell4(
+                Normal: new( 0, 0,-1, 0),
+                Vertices: cube.Vertices
+                    .Select(v => new Vector4(v.Y, v.X, -1 - cellHeight, v.Z))
+                    .ToList(),
+                FaceIndices: cube.FaceIndices
+                    .Select(f => new Face4Indices(new Vector4(f.Normal.Y, f.Normal.X, 0, f.Normal.Z), f.Vertices))
+                    .ToList(),
+                Color: Colors.Orange
+            ),
+            new Cell4(
+                Normal: new( 0, 0, 0, 1),
+                Vertices: cube.Vertices
+                    .Select(v => new Vector4(v.Z, v.Y, v.X, 1 + cellHeight))
+                    .ToList(),
+                FaceIndices: cube.FaceIndices
+                    .Select(f => new Face4Indices(new Vector4(f.Normal.Z, f.Normal.Y, f.Normal.X, 0), f.Vertices))
+                    .ToList(),
+                Color: Colors.Purple
+            ),
+            new Cell4(
+                Normal: new( 0, 0, 0,-1),
+                Vertices: cube.Vertices
+                    .Select(v => new Vector4(v.X, v.Y, v.Z, -1 - cellHeight))
+                    .ToList(),
+                FaceIndices: cube.FaceIndices
+                    .Select(f => new Face4Indices(new Vector4(f.Normal.X, f.Normal.Y, f.Normal.Z, 0), f.Vertices))
+                    .ToList(),
+                Color: Colors.Pink
+            ),
+        };
+    }
+}
