@@ -18,10 +18,10 @@ public class GraphicsDrawable : IDrawable
             Ratio: 50
         );
 
-        var axis = Vector3.Normalize(new(-1, 1, 1));
-        var angle = float.Pi * 1 / 5;
+        var yaw = float.Pi * 1 / 6;
+        var pitch = -float.Pi * 1 / 5;
         var camera = new Camera3(
-            Orientation: Quaternion.CreateFromAxisAngle(axis, angle),
+            Orientation: Quaternion.CreateFromYawPitchRoll(yaw, pitch, 0),
             FocalLength: float.PositiveInfinity,
             ScreenDistance: 2
         );
@@ -34,7 +34,7 @@ record Screen(ICanvas Canvas, PointF Center, float Ratio)
 {
     public PointF Convert(Vector2 point)
     {
-        return new PointF(Center.X + point.X * Ratio, Center.Y + point.Y * Ratio);
+        return new PointF(Center.X + point.X * Ratio, Center.Y - point.Y * Ratio);
     }
 
     public void DrawFace(Face2 face)
