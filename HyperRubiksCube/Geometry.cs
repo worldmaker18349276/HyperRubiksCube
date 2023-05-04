@@ -94,10 +94,20 @@ record Camera3(Quaternion Orientation, float FocalLength, float ScreenDistance)
 
     public List<Face2> ProjectPolyhedrons(List<Polyhedron3> cells)
     {
-        return cells
-            .OrderByDescending(c => c.Vertices.Select(ProjectionDistance).Max())
-            .SelectMany(ProjectPolyhedron)
+        var faces = cells
+            .OrderByDescending(cell => cell.Vertices.Select(ProjectionDistance).Max())
+            .SelectMany(cell =>
+                cell.Faces.Select(f => (f, ProjectFace(f))).Where(f => f.Item2 != null)
+            )
             .ToList();
+
+        return shadowFaces(faces);
+    }
+
+    List<Face2> shadowFaces(List<(Face3, Face2)> faces)
+    {
+        // TODO: shadow faces by projection distances
+        return faces.Select(f => f.Item2).ToList();
     }
 }
 
