@@ -57,7 +57,7 @@ record Camera3(Quaternion Orientation, float FocalLength, float ScreenDistance)
         if (float.IsInfinity(FocalLength))
             return new Vector2(position.X, position.Y);
 
-        var scale = (FocalLength - ScreenDistance) / (FocalLength - position.X);
+        var scale = (FocalLength - ScreenDistance) / (FocalLength - position.Z);
         return new Vector2(position.X * scale, position.Y * scale);
     }
 
