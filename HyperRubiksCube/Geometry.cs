@@ -1,28 +1,6 @@
-﻿using Geometry;
-using Microsoft.Maui.Controls.Shapes;
 using System.Numerics;
 
 namespace Geometry;
-
-record Face3(Vector3 Normal, List<Vector3> Vertices, Color Color)
-{
-    public Face3 Transform(Quaternion rotation)
-    {
-        var normal = Vector3.Transform(Normal, rotation);
-        var vertices = Vertices.Select(v => Vector3.Transform(v, rotation)).ToList();
-        return new Face3(normal, vertices, Color);
-    }
-
-    public Face3 Transform(Quaternion rotation, Vector3 translation)
-    {
-        var normal = Vector3.Transform(Normal, rotation);
-        var vertices = Vertices
-            .Select(v => Vector3.Transform(v, rotation))
-            .Select(v => Vector3.Add(v, translation))
-            .ToList();
-        return new Face3(normal, vertices, Color);
-    }
-}
 
 record Face2(List<Vector2> Vertices, Color Color);
 
@@ -108,6 +86,26 @@ record Camera3(Quaternion Orientation, float FocalLength, float ScreenDistance)
     {
         // TODO: shadow faces by projection distances
         return faces.Select(f => f.Item2).ToList();
+    }
+}
+
+record Face3(Vector3 Normal, List<Vector3> Vertices, Color Color)
+{
+    public Face3 Transform(Quaternion rotation)
+    {
+        var normal = Vector3.Transform(Normal, rotation);
+        var vertices = Vertices.Select(v => Vector3.Transform(v, rotation)).ToList();
+        return new Face3(normal, vertices, Color);
+    }
+
+    public Face3 Transform(Quaternion rotation, Vector3 translation)
+    {
+        var normal = Vector3.Transform(Normal, rotation);
+        var vertices = Vertices
+            .Select(v => Vector3.Transform(v, rotation))
+            .Select(v => Vector3.Add(v, translation))
+            .ToList();
+        return new Face3(normal, vertices, Color);
     }
 }
 
