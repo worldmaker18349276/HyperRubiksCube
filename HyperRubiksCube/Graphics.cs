@@ -9,9 +9,6 @@ public class GraphicsDrawable : IDrawable
 {
     void IDrawable.Draw(ICanvas canvas, RectF dirtyRect)
     {
-        canvas.FontColor = Colors.Blue;
-        canvas.FontSize = 18;
-        canvas.Font = Microsoft.Maui.Graphics.Font.Default;
         canvas.FillColor = Colors.DarkGray;
         canvas.FillRectangle(dirtyRect);
 
