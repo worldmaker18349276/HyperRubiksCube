@@ -31,8 +31,7 @@ public class GraphicsDrawable : IDrawable
                 Quaternion.CreateFromYawPitchRoll(0.1f, 0.2f, -0.1f),
                 new Vector3(0, -2.2f, 0)
             );
-        screen.DrawFaces(camera.ProjectPolyhedron(cube1));
-        screen.DrawFaces(camera.ProjectPolyhedron(cube2));
+        screen.DrawFaces(camera.ProjectPolyhedrons(new List<Polyhedron> { cube1, cube2 }));
     }
 }
 
