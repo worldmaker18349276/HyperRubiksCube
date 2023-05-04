@@ -44,6 +44,14 @@ record Camera3(Quaternion Orientation, float FocalLength, float ScreenDistance)
         }
     }
 
+    public Vector3 FocalPoint
+    {
+        get
+        {
+            return Vector3.Transform(new Vector3(0, 0, FocalLength), Orientation);
+        }
+    }
+
     public Camera3 Transform(Quaternion rotation)
     {
         var orientation = rotation * Orientation;
@@ -77,10 +85,21 @@ record Camera3(Quaternion Orientation, float FocalLength, float ScreenDistance)
 
     public List<Face2> ProjectPolyhedrons(List<Polyhedron3> cells)
     {
-        return cells
-            .OrderBy(c => c.Vertices.Select(v => -Vector3.Dot(v, Forward)).Max())
-            .SelectMany(ProjectPolyhedron)
-            .ToList();
+        if (float.IsInfinity(FocalLength))
+            return cells
+                .OrderBy(c => c.Vertices.Select(v => Vector3.Dot(v, -Forward)).Max())
+                .SelectMany(ProjectPolyhedron)
+                .ToList();
+        else if (FocalLength > 0)
+            return cells
+                .OrderBy(c => -c.Vertices.Select(v => Vector3.Distance(v, FocalPoint)).Min())
+                .SelectMany(ProjectPolyhedron)
+                .ToList();
+        else
+            return cells
+                .OrderBy(c => c.Vertices.Select(v => Vector3.Distance(v, FocalPoint)).Min())
+                .SelectMany(ProjectPolyhedron)
+                .ToList();
     }
 }
 
