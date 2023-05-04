@@ -85,20 +85,3 @@ class Camera3
         return new Face2(vertices);
     }
 }
-
-class Coordinate
-{
-    public PointF Center { get; set; }
-    public float Ratio { get; set; }
-
-    public Coordinate(PointF center, float ratio)
-    {
-        Center = center;
-        Ratio = ratio;
-    }
-
-    public PointF Convert(Vector2 point)
-    {
-        return new PointF(Center.X + point.X * Ratio, Center.Y + point.Y * Ratio);
-    }
-}

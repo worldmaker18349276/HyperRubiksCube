@@ -1,5 +1,7 @@
 ﻿using Geometry;
+using Microsoft.UI.Xaml.Controls;
 using System.Numerics;
+using static Microsoft.Maui.ApplicationModel.Permissions;
 
 namespace Graphics;
 
@@ -13,9 +15,10 @@ public class GraphicsDrawable : IDrawable
         canvas.FillColor = Colors.DarkGray;
         canvas.FillRectangle(dirtyRect);
 
-        var coordinate = new Coordinate(
-            center: dirtyRect.Center,
-            ratio: 50
+        var screen = new Screen(
+            Canvas: canvas,
+            Center: dirtyRect.Center,
+            Ratio: 50
         );
 
         var camera = new Camera3(
@@ -35,17 +38,28 @@ public class GraphicsDrawable : IDrawable
         );
         face1.Transform(Quaternion.CreateFromAxisAngle(new(1, 1, 0), float.Pi/5));
 
-        var rect1 = camera.ProjectFace(face1);
-        if (rect1 != null)
-        {
-            var reg = new PathF();
-            if (rect1.Vertices.Any())
-                reg.MoveTo(coordinate.Convert(rect1.Vertices.First()));
-            foreach (var curr in rect1.Vertices.Skip(1))
-                reg.LineTo(coordinate.Convert(curr));
-            canvas.FillColor = Colors.SlateBlue;
-            canvas.FillPath(reg);
-        }
+        screen.DrawFace(camera.ProjectFace(face1));
     }
 }
 
+record Screen(ICanvas Canvas, PointF Center, float Ratio)
+{
+    public PointF Convert(Vector2 point)
+    {
+        return new PointF(Center.X + point.X * Ratio, Center.Y + point.Y * Ratio);
+    }
+
+    public void DrawFace(Face2 face)
+    {
+        if (face == null)
+            return;
+
+        var path = new PathF();
+        if (face.Vertices.Any())
+            path.MoveTo(Convert(face.Vertices.First()));
+        foreach (var curr in face.Vertices.Skip(1))
+            path.LineTo(Convert(curr));
+        Canvas.FillColor = Colors.SlateBlue;
+        Canvas.FillPath(path);
+    }
+}
