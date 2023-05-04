@@ -1,4 +1,5 @@
 ﻿using Geometry;
+using Microsoft.Maui.Controls.Shapes;
 using System.Numerics;
 
 namespace Geometry;
@@ -61,20 +62,89 @@ record Camera3(Quaternion Orientation, float FocalLength, float ScreenDistance)
 
     public List<Face2> ProjectPolyhedron(Polyhedron cell)
     {
-        return cell.faces.Select(this.ProjectFace).Where(f => f != null).ToList();
+        return cell.Faces.Select(this.ProjectFace).Where(f => f != null).ToList();
     }
 }
 
-record Polyhedron(List<Face3> faces)
+record Face3Indices(Vector3 Normal, List<Index> Vertices, Color Color)
 {
-    public static Polyhedron Cube = new(new List<Face3>
+    public Face3Indices Transform(Quaternion rotation)
+    {
+        return new Face3Indices(Vector3.Transform(Normal, rotation), Vertices, Color);
+    }
+}
+
+record Polyhedron(List<Vector3> Vertices, List<Face3Indices> FaceIndices)
+{
+    public List<Face3> Faces
+    {
+        get
         {
-            new Face3(new( 1, 0, 0), new List<Vector3> {new( 1, 1, 1), new( 1,-1, 1), new( 1,-1,-1), new( 1, 1,-1)}, Colors.Blue),
-            new Face3(new(-1, 0, 0), new List<Vector3> {new(-1, 1, 1), new(-1, 1,-1), new(-1,-1,-1), new(-1,-1, 1)}, Colors.Green),
-            new Face3(new( 0, 1, 0), new List<Vector3> {new( 1, 1, 1), new( 1, 1,-1), new(-1, 1,-1), new(-1, 1, 1)}, Colors.White),
-            new Face3(new( 0,-1, 0), new List<Vector3> {new( 1,-1, 1), new(-1,-1, 1), new(-1,-1,-1), new( 1,-1,-1)}, Colors.Yellow),
-            new Face3(new( 0, 0, 1), new List<Vector3> {new( 1, 1, 1), new(-1, 1, 1), new(-1,-1, 1), new( 1,-1, 1)}, Colors.Red),
-            new Face3(new( 0, 0,-1), new List<Vector3> {new( 1, 1,-1), new( 1,-1,-1), new(-1,-1,-1), new(-1, 1,-1)}, Colors.Orange),
+            return FaceIndices.Select(
+                faceIndices => new Face3(
+                    Normal: faceIndices.Normal,
+                    Vertices: faceIndices.Vertices.Select(i => Vertices[i]).ToList(),
+                    Color: faceIndices.Color
+                )
+            ).ToList();
         }
-    );
+    }
+
+    public static Polyhedron Cube;
+
+    static Polyhedron()
+    {
+        var cubeVertices = new List<Vector3>();
+        var signs = new float[] { +1, -1 };
+        foreach (var i in signs)
+            foreach (var j in signs)
+                foreach (var k in signs)
+                    cubeVertices.Add(new(i, j, k));
+        var cubeFaceIndices = new List<Face3Indices>()
+        {
+            new Face3Indices(new( 1, 0, 0), new List<Index> {
+                4*0+2*0+1*0,
+                4*0+2*1+1*0,
+                4*0+2*1+1*1,
+                4*0+2*0+1*1,
+            }, Colors.Blue),
+            new Face3Indices(new(-1, 0, 0), new List<Index> {
+                4*1+2*0+1*0,
+                4*1+2*0+1*1,
+                4*1+2*1+1*1,
+                4*1+2*1+1*0,
+            }, Colors.Green),
+            new Face3Indices(new( 0, 1, 0), new List<Index> {
+                2*0+1*0+4*0,
+                2*0+1*1+4*0,
+                2*0+1*1+4*1,
+                2*0+1*0+4*1,
+            }, Colors.White),
+            new Face3Indices(new( 0,-1, 0), new List<Index> {
+                2*1+1*0+4*0,
+                2*1+1*0+4*1,
+                2*1+1*1+4*1,
+                2*1+1*1+4*0,
+            }, Colors.Yellow),
+            new Face3Indices(new( 0, 0, 1), new List<Index> {
+                1*0+4*0+2*0,
+                1*0+4*1+2*0,
+                1*0+4*1+2*1,
+                1*0+4*0+2*1,
+            }, Colors.Red),
+            new Face3Indices(new( 0, 0,-1), new List<Index> {
+                1*1+4*0+2*0,
+                1*1+4*0+2*1,
+                1*1+4*1+2*1,
+                1*1+4*1+2*0,
+            }, Colors.Orange),
+        };
+
+        Cube = new Polyhedron(cubeVertices, cubeFaceIndices);
+    }
+
+    public Polyhedron Transform(Quaternion rotation)
+    {
+        return new Polyhedron(Vertices.Select(v => Vector3.Transform(v, rotation)).ToList(), FaceIndices);
+    }
 }
