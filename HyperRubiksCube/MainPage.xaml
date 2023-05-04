@@ -4,11 +4,8 @@
              xmlns:graphics="clr-namespace:Graphics"
              x:Class="HyperRubiksCube.MainPage">
 
-    <ContentPage.Resources>
-        <graphics:GraphicsDrawable x:Key="drawable" />
-    </ContentPage.Resources>
     <VerticalStackLayout>
-        <GraphicsView Drawable="{StaticResource drawable}"
+        <graphics:HyperCubeView
                       HeightRequest="300"
                       WidthRequest="400" />
     </VerticalStackLayout>

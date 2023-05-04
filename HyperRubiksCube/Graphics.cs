@@ -3,14 +3,14 @@ using System.Numerics;
 
 namespace Graphics;
 
-public class GraphicsDrawable : IDrawable
+
+public class HyperCubeScene
 {
+    internal Camera3 Camera { get; set; }
+    internal Camera4 HyperCamera { get; set; }
+    internal List<Cell4> Cells { get; set; }
 
-    Camera3 Camera;
-    Camera4 HyperCamera;
-    List<Cell4> Cells;
-
-    public GraphicsDrawable()
+    public HyperCubeScene()
     {
         Camera = new Camera3(
             Orientation: Quaternion.CreateFromYawPitchRoll(
@@ -38,6 +38,26 @@ public class GraphicsDrawable : IDrawable
         Cells = HyperCube.makeHyperCube(0.3f);
     }
 
+}
+
+public partial class HyperCubeView : GraphicsView
+{
+    public HyperCubeView() {
+        var scene = new HyperCubeScene();
+        var drawable = new HyperCubeDrawable(scene);
+        Drawable = drawable;
+    }
+}
+
+public class HyperCubeDrawable : IDrawable
+{
+    HyperCubeScene Scene { get; set; }
+
+    public HyperCubeDrawable(HyperCubeScene scene)
+    {
+        Scene = scene;
+    }
+
     void IDrawable.Draw(ICanvas canvas, RectF dirtyRect)
     {
         canvas.FillColor = Colors.DarkGray;
@@ -48,11 +68,11 @@ public class GraphicsDrawable : IDrawable
             Center: dirtyRect.Center,
             Ratio: 50
         );
-        var cubes = Cells
-            .Select(HyperCamera.ProjectCell)
+        var cubes = Scene.Cells
+            .Select(Scene.HyperCamera.ProjectCell)
             .Where(cell => cell != null)
             .ToList();
-        screen.DrawFaces(Camera.ProjectCells(cubes));
+        screen.DrawFaces(Scene.Camera.ProjectCells(cubes));
     }
 }
 
