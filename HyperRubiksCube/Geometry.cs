@@ -275,59 +275,23 @@ record Camera4(Matrix4x4 Orientation, float FocalLength, float ScreenDistance)
 
         var vertices = cell.Vertices.Select(ProjectVector).ToList();
         var faceIndices = cell.FaceIndices
-            .Select(f => new Face3Indices(ProjectVector(f.Normal2), f.Vertices, cell.Color))
+            .Select(f => new Face3Indices(ProjectVector(f.Normal), f.Vertices, cell.Color))
             .ToList();
         return new Cell3(vertices, faceIndices);
     }
 }
 
-record Face4(Vector4 Normal1, Vector4 Normal2, List<Vector4> Vertices, Color Color)
-{
-    public Face4 Transform(Matrix4x4 rotation)
-    {
-        var normal1 = Vector4.Transform(Normal1, rotation);
-        var normal2 = Vector4.Transform(Normal2, rotation);
-        var vertices = Vertices.Select(v => Vector4.Transform(v, rotation)).ToList();
-        return new Face4(normal1, normal2, vertices, Color);
-    }
-
-    public Face4 Transform(Matrix4x4 rotation, Vector4 translation)
-    {
-        var normal1 = Vector4.Transform(Normal1, rotation);
-        var normal2 = Vector4.Transform(Normal2, rotation);
-        var vertices = Vertices
-            .Select(v => Vector4.Transform(v, rotation) + translation)
-            .ToList();
-        return new Face4(normal1, normal2, vertices, Color);
-    }
-}
-
-record Face4Indices(Vector4 Normal1, Vector4 Normal2, List<Index> Vertices)
+record Face4Indices(Vector4 Normal, List<Index> Vertices)
 {
     public Face4Indices Transform(Matrix4x4 rotation)
     {
-        return new Face4Indices(Vector4.Transform(Normal1, rotation), Vector4.Transform(Normal2, rotation), Vertices);
+        return new Face4Indices(Vector4.Transform(Normal, rotation), Vertices);
     }
 
 }
 
 record Cell4(Vector4 Normal, List<Vector4> Vertices, List<Face4Indices> FaceIndices, Color Color)
 {
-    public List<Face4> Faces
-    {
-        get
-        {
-            return FaceIndices.Select(
-                faceIndices => new Face4(
-                    Normal1: faceIndices.Normal1,
-                    Normal2: faceIndices.Normal2,
-                    Vertices: faceIndices.Vertices.Select(i => Vertices[i]).ToList(),
-                    Color: Color
-                )
-            ).ToList();
-        }
-    }
-
     public Cell4 Transform(Matrix4x4 rotation)
     {
         return new Cell4(
