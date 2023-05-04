@@ -69,37 +69,35 @@ record Camera3(Quaternion Orientation, float FocalLength, float ScreenDistance)
         return new Vector2(position.X * scale, position.Y * scale);
     }
 
+    public float ProjectionDistance(Vector3 position)
+    {
+        if (float.IsInfinity(FocalLength))
+            return Vector3.Dot(position, Forward);
+
+        var dis = position - FocalPoint;
+        return dis.Length() * float.Sign(Vector3.Dot(dis, Forward));
+    }
+
     public Face2 ProjectFace(Face3 face)
     {
         if (Vector3.Dot(face.Normal, Forward) > 0)
             return null;
 
-        var vertices = face.Vertices.Select(this.ProjectVector).ToList();
+        var vertices = face.Vertices.Select(ProjectVector).ToList();
         return new Face2(vertices, face.Color);
     }
 
     public List<Face2> ProjectPolyhedron(Polyhedron3 cell)
     {
-        return cell.Faces.Select(this.ProjectFace).Where(f => f != null).ToList();
+        return cell.Faces.Select(ProjectFace).Where(f => f != null).ToList();
     }
 
     public List<Face2> ProjectPolyhedrons(List<Polyhedron3> cells)
     {
-        if (float.IsInfinity(FocalLength))
-            return cells
-                .OrderBy(c => c.Vertices.Select(v => Vector3.Dot(v, -Forward)).Max())
-                .SelectMany(ProjectPolyhedron)
-                .ToList();
-        else if (FocalLength > 0)
-            return cells
-                .OrderBy(c => -c.Vertices.Select(v => Vector3.Distance(v, FocalPoint)).Min())
-                .SelectMany(ProjectPolyhedron)
-                .ToList();
-        else
-            return cells
-                .OrderBy(c => c.Vertices.Select(v => Vector3.Distance(v, FocalPoint)).Min())
-                .SelectMany(ProjectPolyhedron)
-                .ToList();
+        return cells
+            .OrderByDescending(c => c.Vertices.Select(ProjectionDistance).Max())
+            .SelectMany(ProjectPolyhedron)
+            .ToList();
     }
 }
 

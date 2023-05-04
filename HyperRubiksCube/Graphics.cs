@@ -22,7 +22,7 @@ public class GraphicsDrawable : IDrawable
         var pitch = -float.Pi * 1 / 5;
         var camera = new Camera3(
             Orientation: Quaternion.CreateFromYawPitchRoll(yaw, pitch, 0),
-            FocalLength: float.PositiveInfinity,
+            FocalLength: 10,
             ScreenDistance: 2
         );
 
