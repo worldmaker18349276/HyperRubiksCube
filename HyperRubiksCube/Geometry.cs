@@ -37,7 +37,7 @@ record Camera3(Quaternion Orientation, float FocalLength, float ScreenDistance)
         return this with { Orientation = orientation };
     }
 
-    public Vector2 ProjectVector(Vector3 position)
+    public Vector2 ProjectPosition(Vector3 position)
     {
         position = Vector3.Transform(position, Quaternion.Inverse(Orientation));
 
@@ -62,7 +62,7 @@ record Camera3(Quaternion Orientation, float FocalLength, float ScreenDistance)
         if (Vector3.Dot(face.Normal, Looking) > 0)
             return null;
 
-        var vertices = face.Vertices.Select(ProjectVector).ToList();
+        var vertices = face.Vertices.Select(ProjectPosition).ToList();
         return new Face2(vertices, face.Color);
     }
 
@@ -245,7 +245,7 @@ record Camera4(Matrix4x4 Orientation, float FocalLength, float ScreenDistance)
         return this with { Orientation = orientation };
     }
 
-    public Vector3 ProjectVector(Vector4 position)
+    public Vector3 ProjectPosition(Vector4 position)
     {
         Matrix4x4 inversedOrientation;
         var succ = Matrix4x4.Invert(Orientation, out inversedOrientation);
@@ -257,6 +257,23 @@ record Camera4(Matrix4x4 Orientation, float FocalLength, float ScreenDistance)
 
         var scale = (FocalLength - ScreenDistance) / (FocalLength - position.W);
         return new Vector3(position.X * scale, position.Y * scale, position.Z * scale);
+    }
+
+    public Vector3 ProjectTensor((Vector4, Vector4) tensor)
+    {
+        // left contraction: -Looking |_ tensor
+        Matrix4x4 inversedOrientation;
+        var succ = Matrix4x4.Invert(Orientation, out inversedOrientation);
+        Debug.Assert(succ);
+        var normal1 = Vector4.Transform(tensor.Item1, inversedOrientation);
+        var normal2 = Vector4.Transform(tensor.Item2, inversedOrientation);
+        var normal = new Vector3(
+            normal1.W * normal2.X - normal2.W * normal1.X,
+            normal1.W * normal2.Y - normal2.W * normal1.Y,
+            normal1.W * normal2.Z - normal2.W * normal1.Z
+        );
+
+        return Vector3.Normalize(normal);
     }
 
     public float ProjectionDistance(Vector4 position)
@@ -273,9 +290,9 @@ record Camera4(Matrix4x4 Orientation, float FocalLength, float ScreenDistance)
         if (Vector4.Dot(cell.Normal, Looking) > 0)
             return null;
 
-        var vertices = cell.Vertices.Select(ProjectVector).ToList();
+        var vertices = cell.Vertices.Select(ProjectPosition).ToList();
         var faceIndices = cell.FaceIndices
-            .Select(f => new Face3Indices(ProjectVector(f.Normal), f.Vertices, cell.Color))
+            .Select(f => new Face3Indices(ProjectTensor((cell.Normal, f.Normal)), f.Vertices, cell.Color))
             .ToList();
         return new Cell3(vertices, faceIndices);
     }
