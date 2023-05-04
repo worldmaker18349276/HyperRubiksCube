@@ -18,25 +18,15 @@ public class GraphicsDrawable : IDrawable
             Ratio: 50
         );
 
+        var axis = Vector3.Normalize(new(-1, 1, 1));
+        var angle = float.Pi * 1 / 5;
         var camera = new Camera3(
-            Orientation: Quaternion.Identity,
+            Orientation: Quaternion.CreateFromAxisAngle(axis, angle),
             FocalLength: float.PositiveInfinity,
             ScreenDistance: 2
         );
 
-        var face1 = new Face3(
-            new Vector3(0, 0, 1),
-            new List<Vector3> {
-                new( 1,  1, 0),
-                new(-1,  1, 0),
-                new(-1, -1, 0),
-                new( 1, -1, 0)
-            },
-            Colors.SlateBlue
-        )
-        .Transform(Quaternion.CreateFromAxisAngle(new(1, 1, 0), float.Pi/5));
-
-        screen.DrawFace(camera.ProjectFace(face1));
+        screen.DrawFaces(camera.ProjectFaces(Polyhedron.Cube));
     }
 }
 
@@ -59,5 +49,13 @@ record Screen(ICanvas Canvas, PointF Center, float Ratio)
             path.LineTo(Convert(curr));
         Canvas.FillColor = face.Color;
         Canvas.FillPath(path);
+    }
+
+    public void DrawFaces(List<Face2> faces)
+    {
+        foreach (var face in faces)
+        {
+            DrawFace(face);
+        }
     }
 }
