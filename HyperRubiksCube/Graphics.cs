@@ -1,7 +1,5 @@
 ﻿using Geometry;
-using Microsoft.UI.Xaml.Controls;
 using System.Numerics;
-using static Microsoft.Maui.ApplicationModel.Permissions;
 
 namespace Graphics;
 
