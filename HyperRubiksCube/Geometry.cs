@@ -12,6 +12,16 @@ record Face3(Vector3 Normal, List<Vector3> Vertices, Color Color)
         var vertices = Vertices.Select(v => Vector3.Transform(v, rotation)).ToList();
         return new Face3(normal, vertices, Color);
     }
+
+    public Face3 Transform(Quaternion rotation, Vector3 translation)
+    {
+        var normal = Vector3.Transform(Normal, rotation);
+        var vertices = Vertices
+            .Select(v => Vector3.Transform(v, rotation))
+            .Select(v => Vector3.Add(v, translation))
+            .ToList();
+        return new Face3(normal, vertices, Color);
+    }
 }
 
 record Face2(List<Vector2> Vertices, Color Color);
@@ -145,6 +155,20 @@ record Polyhedron(List<Vector3> Vertices, List<Face3Indices> FaceIndices)
 
     public Polyhedron Transform(Quaternion rotation)
     {
-        return new Polyhedron(Vertices.Select(v => Vector3.Transform(v, rotation)).ToList(), FaceIndices);
+        return new Polyhedron(
+            Vertices.Select(v => Vector3.Transform(v, rotation)).ToList(),
+            FaceIndices.Select(f => f.Transform(rotation)).ToList()
+        );
+    }
+
+    public Polyhedron Transform(Quaternion rotation, Vector3 translation)
+    {
+        return new Polyhedron(
+            Vertices
+            .Select(v => Vector3.Transform(v, rotation))
+            .Select(v => Vector3.Add(v, translation))
+            .ToList(),
+            FaceIndices.Select(f => f.Transform(rotation)).ToList()
+        );
     }
 }

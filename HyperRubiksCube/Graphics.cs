@@ -15,7 +15,7 @@ public class GraphicsDrawable : IDrawable
         var screen = new Screen(
             Canvas: canvas,
             Center: dirtyRect.Center,
-            Ratio: 50
+            Ratio: 20
         );
 
         var yaw = float.Pi * 1 / 6;
@@ -26,7 +26,13 @@ public class GraphicsDrawable : IDrawable
             ScreenDistance: 2
         );
 
-        screen.DrawFaces(camera.ProjectPolyhedron(Polyhedron.Cube));
+        var cube1 = Polyhedron.Cube;
+        var cube2 = Polyhedron.Cube.Transform(
+                Quaternion.CreateFromYawPitchRoll(0.1f, 0.2f, -0.1f),
+                new Vector3(0, -2.2f, 0)
+            );
+        screen.DrawFaces(camera.ProjectPolyhedron(cube1));
+        screen.DrawFaces(camera.ProjectPolyhedron(cube2));
     }
 }
 
