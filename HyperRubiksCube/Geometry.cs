@@ -66,12 +66,12 @@ record Camera3(Quaternion Orientation, float FocalLength, float ScreenDistance)
         return new Face2(vertices, face.Color);
     }
 
-    public List<Face2> ProjectPolyhedron(Cell3 cell)
+    public List<Face2> ProjectCell(Cell3 cell)
     {
         return cell.Faces.Select(ProjectFace).Where(f => f != null).ToList();
     }
 
-    public List<Face2> ProjectPolyhedrons(List<Cell3> cells)
+    public List<Face2> ProjectCells(List<Cell3> cells)
     {
         var faces = cells
             .OrderByDescending(cell => cell.Vertices.Select(ProjectionDistance).Max())

@@ -45,7 +45,7 @@ public class GraphicsDrawable : IDrawable
             .Where(cell => cell != null)
             .ToList();
 
-        screen.DrawFaces(camera.ProjectPolyhedrons(cubes));
+        screen.DrawFaces(camera.ProjectCells(cubes));
     }
 }
 
