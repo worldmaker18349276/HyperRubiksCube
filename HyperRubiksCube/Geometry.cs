@@ -59,15 +59,15 @@ record Camera3(Quaternion Orientation, float FocalLength, float ScreenDistance)
         return new Face2(vertices, face.Color);
     }
 
-    public List<Face2> ProjectFaces(List<Face3> faces)
+    public List<Face2> ProjectPolyhedron(Polyhedron cell)
     {
-        return faces.Select(this.ProjectFace).Where(f => f != null).ToList();
+        return cell.faces.Select(this.ProjectFace).Where(f => f != null).ToList();
     }
 }
 
-static class Polyhedron
+record Polyhedron(List<Face3> faces)
 {
-    public static List<Face3> Cube = new List<Face3>
+    public static Polyhedron Cube = new(new List<Face3>
         {
             new Face3(new( 1, 0, 0), new List<Vector3> {new( 1, 1, 1), new( 1,-1, 1), new( 1,-1,-1), new( 1, 1,-1)}, Colors.Blue),
             new Face3(new(-1, 0, 0), new List<Vector3> {new(-1, 1, 1), new(-1, 1,-1), new(-1,-1,-1), new(-1,-1, 1)}, Colors.Green),
@@ -75,5 +75,6 @@ static class Polyhedron
             new Face3(new( 0,-1, 0), new List<Vector3> {new( 1,-1, 1), new(-1,-1, 1), new(-1,-1,-1), new( 1,-1,-1)}, Colors.Yellow),
             new Face3(new( 0, 0, 1), new List<Vector3> {new( 1, 1, 1), new(-1, 1, 1), new(-1,-1, 1), new( 1,-1, 1)}, Colors.Red),
             new Face3(new( 0, 0,-1), new List<Vector3> {new( 1, 1,-1), new( 1,-1,-1), new(-1,-1,-1), new(-1, 1,-1)}, Colors.Orange),
-        };
+        }
+    );
 }

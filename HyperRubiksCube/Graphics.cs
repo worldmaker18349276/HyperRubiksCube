@@ -26,7 +26,7 @@ public class GraphicsDrawable : IDrawable
             ScreenDistance: 2
         );
 
-        screen.DrawFaces(camera.ProjectFaces(Polyhedron.Cube));
+        screen.DrawFaces(camera.ProjectPolyhedron(Polyhedron.Cube));
     }
 }
 
