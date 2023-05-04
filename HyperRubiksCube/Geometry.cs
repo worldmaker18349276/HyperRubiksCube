@@ -1,4 +1,4 @@
-﻿using System.Linq;
+﻿using System.Diagnostics;
 using System.Numerics;
 
 namespace Geometry;
@@ -202,6 +202,82 @@ record Cell3(List<Vector3> Vertices, List<Face3Indices> FaceIndices)
             .ToList(),
             FaceIndices.Select(f => f.Transform(rotation)).ToList()
         );
+    }
+}
+
+record Camera4(Matrix4x4 Orientation, float FocalLength, float ScreenDistance)
+{
+    public Vector4 Looking
+    {
+        get
+        {
+            return Vector4.Transform(new Vector4(0, 0, 0, -1), Orientation);
+        }
+    }
+
+    public Vector4 Forward
+    {
+        get
+        {
+            return Vector4.Transform(new Vector4(0, 0, -1, 0), Orientation);
+        }
+    }
+
+    public Vector4 Upward
+    {
+        get
+        {
+            return Vector4.Transform(new Vector4(0, 1, 0, 0), Orientation);
+        }
+    }
+
+    public Vector4 FocalPoint
+    {
+        get
+        {
+            return Vector4.Transform(new Vector4(0, 0, 0, FocalLength), Orientation);
+        }
+    }
+
+    public Camera4 Transform(Matrix4x4 rotation)
+    {
+        var orientation = rotation * Orientation;
+        return this with { Orientation = orientation };
+    }
+
+    public Vector3 ProjectVector(Vector4 position)
+    {
+        Matrix4x4 inversedOrientation;
+        var succ = Matrix4x4.Invert(Orientation, out inversedOrientation);
+        Debug.Assert(succ);
+        position = Vector4.Transform(position, inversedOrientation);
+
+        if (float.IsInfinity(FocalLength))
+            return new Vector3(position.X, position.Y, position.Z);
+
+        var scale = (FocalLength - ScreenDistance) / (FocalLength - position.W);
+        return new Vector3(position.X * scale, position.Y * scale, position.Z * scale);
+    }
+
+    public float ProjectionDistance(Vector4 position)
+    {
+        if (float.IsInfinity(FocalLength))
+            return Vector4.Dot(position, Looking);
+
+        var dis = position - FocalPoint;
+        return dis.Length() * float.Sign(Vector4.Dot(dis, Looking));
+    }
+
+    public Cell3 ProjectCell(Cell4 cell)
+    {
+        if (Vector4.Dot(cell.Normal, Looking) > 0)
+            return null;
+
+        var vertices = cell.Vertices.Select(ProjectVector).ToList();
+        var faceIndices = cell.FaceIndices
+            .Select(f => new Face3Indices(ProjectVector(f.Normal2), f.Vertices, cell.Color))
+            .ToList();
+        return new Cell3(vertices, faceIndices);
     }
 }
 
