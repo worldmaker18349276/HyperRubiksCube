@@ -7,7 +7,7 @@ record Face2(List<Vector2> Vertices, Color Color);
 
 record Camera3(Quaternion Orientation, float FocalLength, float ScreenDistance)
 {
-    public Vector3 Forward
+    public Vector3 Looking
     {
         get
         {
@@ -51,15 +51,15 @@ record Camera3(Quaternion Orientation, float FocalLength, float ScreenDistance)
     public float ProjectionDistance(Vector3 position)
     {
         if (float.IsInfinity(FocalLength))
-            return Vector3.Dot(position, Forward);
+            return Vector3.Dot(position, Looking);
 
         var dis = position - FocalPoint;
-        return dis.Length() * float.Sign(Vector3.Dot(dis, Forward));
+        return dis.Length() * float.Sign(Vector3.Dot(dis, Looking));
     }
 
     public Face2 ProjectFace(Face3 face)
     {
-        if (Vector3.Dot(face.Normal, Forward) > 0)
+        if (Vector3.Dot(face.Normal, Looking) > 0)
             return null;
 
         var vertices = face.Vertices.Select(ProjectVector).ToList();
