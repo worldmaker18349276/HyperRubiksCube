@@ -41,7 +41,7 @@ record Camera3(Quaternion Orientation, float FocalLength, float ScreenDistance)
 
     public Vector2 ProjectVector(Vector3 position)
     {
-        position = Vector3.Transform(position, Orientation);
+        position = Vector3.Transform(position, Quaternion.Inverse(Orientation));
 
         if (float.IsInfinity(FocalLength))
             return new Vector2(position.X, position.Y);
