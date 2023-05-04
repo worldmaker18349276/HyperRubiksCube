@@ -5,18 +5,14 @@ namespace Graphics;
 
 public class GraphicsDrawable : IDrawable
 {
-    void IDrawable.Draw(ICanvas canvas, RectF dirtyRect)
+
+    Camera3 Camera;
+    Camera4 HyperCamera;
+    List<Cell4> Cells;
+
+    public GraphicsDrawable()
     {
-        canvas.FillColor = Colors.DarkGray;
-        canvas.FillRectangle(dirtyRect);
-
-        var screen = new Screen(
-            Canvas: canvas,
-            Center: dirtyRect.Center,
-            Ratio: 50
-        );
-
-        var camera = new Camera3(
+        Camera = new Camera3(
             Orientation: Quaternion.CreateFromYawPitchRoll(
                 yaw: float.Pi * 1 / 6,
                 pitch: -float.Pi * 1 / 5,
@@ -33,19 +29,30 @@ public class GraphicsDrawable : IDrawable
                 pitch: -float.Pi * 1 / 5,
                 roll: 0
             );
-        var hyperCamera = new Camera4(
+        HyperCamera = new Camera4(
             Orientation: orientation4,
             FocalLength: -10,
             ScreenDistance: 2
         );
 
-        var cells = HyperCube.makeHyperCube(0.3f);
-        var cubes = cells
-            .Select(hyperCamera.ProjectCell)
+        Cells = HyperCube.makeHyperCube(0.3f);
+    }
+
+    void IDrawable.Draw(ICanvas canvas, RectF dirtyRect)
+    {
+        canvas.FillColor = Colors.DarkGray;
+        canvas.FillRectangle(dirtyRect);
+
+        var screen = new Screen(
+            Canvas: canvas,
+            Center: dirtyRect.Center,
+            Ratio: 50
+        );
+        var cubes = Cells
+            .Select(HyperCamera.ProjectCell)
             .Where(cell => cell != null)
             .ToList();
-
-        screen.DrawFaces(camera.ProjectCells(cubes));
+        screen.DrawFaces(Camera.ProjectCells(cubes));
     }
 }
 
