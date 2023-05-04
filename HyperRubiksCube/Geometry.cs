@@ -2,44 +2,20 @@
 
 namespace Geometry;
 
-class Face3
+record Face3(Vector3 Normal, List<Vector3> Vertices, Color Color)
 {
-    public Vector3 Normal { get; set; }
-    public List<Vector3> Vertices { get; set; }
-    public Color Color { get; set; }
-
-    public Face3(Vector3 normal, List<Vector3> vertices, Color color)
+    public Face3 Transform(Quaternion rotation)
     {
-        Normal = normal;
-        Vertices = vertices;
-        Color = color;
-    }
-
-    public void Transform(Quaternion rotation)
-    {
-        Normal = Vector3.Transform(Normal, rotation);
-        Vertices = Vertices.Select(v => Vector3.Transform(v, rotation)).ToList();
+        var normal = Vector3.Transform(Normal, rotation);
+        var vertices = Vertices.Select(v => Vector3.Transform(v, rotation)).ToList();
+        return new Face3(normal, vertices, Color);
     }
 }
 
-class Face2
+record Face2(List<Vector2> Vertices, Color Color);
+
+record Camera3(Quaternion Orientation, float FocalLength, float ScreenDistance)
 {
-    public List<Vector2> Vertices { get; set; }
-    public Color Color { get; set; }
-
-    public Face2(List<Vector2> vertices, Color color)
-    {
-        Vertices = vertices;
-        Color = color;
-    }
-}
-
-class Camera3
-{
-    public Quaternion Orientation { get; set; }
-    public float FocalLength { get; set; }
-    public float ScreenDistance { get; set; }
-
     public Vector3 Forward
     {
         get
@@ -56,16 +32,10 @@ class Camera3
         }
     }
 
-    public Camera3(Quaternion orientation, float focalLength, float screenDistance)
+    public Camera3 Transform(Quaternion rotation)
     {
-        Orientation = orientation;
-        FocalLength = focalLength;
-        ScreenDistance = screenDistance;
-    }
-
-    public void Transform(Quaternion rotation)
-    {
-        Orientation = rotation * Orientation;
+        var orientation = rotation * Orientation;
+        return this with { Orientation = orientation };
     }
 
     public Vector2 ProjectVector(Vector3 position)

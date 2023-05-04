@@ -19,9 +19,9 @@ public class GraphicsDrawable : IDrawable
         );
 
         var camera = new Camera3(
-            orientation: Quaternion.Identity,
-            focalLength: float.PositiveInfinity,
-            screenDistance: 2
+            Orientation: Quaternion.Identity,
+            FocalLength: float.PositiveInfinity,
+            ScreenDistance: 2
         );
 
         var face1 = new Face3(
@@ -33,8 +33,8 @@ public class GraphicsDrawable : IDrawable
                 new( 1, -1, 0)
             },
             Colors.SlateBlue
-        );
-        face1.Transform(Quaternion.CreateFromAxisAngle(new(1, 1, 0), float.Pi/5));
+        )
+        .Transform(Quaternion.CreateFromAxisAngle(new(1, 1, 0), float.Pi/5));
 
         screen.DrawFace(camera.ProjectFace(face1));
     }
