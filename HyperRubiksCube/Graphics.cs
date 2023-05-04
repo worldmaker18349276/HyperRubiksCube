@@ -4,11 +4,13 @@ using System.Numerics;
 namespace Graphics;
 
 
-public class HyperCubeScene
+public class HyperCubeScene : IDrawable
 {
-    internal Camera3 Camera { get; set; }
-    internal Camera4 HyperCamera { get; set; }
-    internal List<Cell4> Cells { get; set; }
+    Camera3 Camera;
+    Camera4 HyperCamera;
+    List<Cell4> Cells;
+
+    Matrix4x4 Step;
 
     public HyperCubeScene()
     {
@@ -36,26 +38,14 @@ public class HyperCubeScene
         );
 
         Cells = HyperCube.makeHyperCube(0.3f);
-    }
 
-}
-
-public partial class HyperCubeView : GraphicsView
-{
-    public HyperCubeView() {
-        var scene = new HyperCubeScene();
-        var drawable = new HyperCubeDrawable(scene);
-        Drawable = drawable;
-    }
-}
-
-public class HyperCubeDrawable : IDrawable
-{
-    HyperCubeScene Scene { get; set; }
-
-    public HyperCubeDrawable(HyperCubeScene scene)
-    {
-        Scene = scene;
+        Step =
+            Matrix4x4Extension.CreateRotationXY(float.Pi / 120)
+            * Matrix4x4.CreateFromYawPitchRoll(
+                yaw: float.Pi / 100,
+                pitch: float.Pi / 160,
+                roll: float.Pi / 200
+            );
     }
 
     void IDrawable.Draw(ICanvas canvas, RectF dirtyRect)
@@ -68,11 +58,36 @@ public class HyperCubeDrawable : IDrawable
             Center: dirtyRect.Center,
             Ratio: 50
         );
-        var cubes = Scene.Cells
-            .Select(Scene.HyperCamera.ProjectCell)
+        var cubes = Cells
+            .Select(HyperCamera.ProjectCell)
             .Where(cell => cell != null)
             .ToList();
-        screen.DrawFaces(Scene.Camera.ProjectCells(cubes));
+        screen.DrawFaces(Camera.ProjectCells(cubes));
+    }
+
+    public void Advance()
+    {
+        var nextOrientation = Step * HyperCamera.Orientation;
+        var det = nextOrientation.GetDeterminant();
+        var scale = 1 / Math.Sqrt(Math.Sqrt(det));
+        nextOrientation = Matrix4x4.CreateScale((float)scale) * nextOrientation;
+        HyperCamera = HyperCamera with { Orientation = nextOrientation };
+    }
+}
+
+public partial class HyperCubeView : GraphicsView
+{
+    public HyperCubeView() {
+        var scene = new HyperCubeScene();
+        Drawable = scene;
+
+        IDispatcherTimer timer = Dispatcher.CreateTimer();
+        timer.Interval = TimeSpan.FromMilliseconds(100);
+        timer.Tick += (s, e) => {
+            scene.Advance();
+            Invalidate();
+        };
+        timer.Start();
     }
 }
 
