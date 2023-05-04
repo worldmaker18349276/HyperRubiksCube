@@ -70,12 +70,12 @@ record Camera3(Quaternion Orientation, float FocalLength, float ScreenDistance)
         return new Face2(vertices, face.Color);
     }
 
-    public List<Face2> ProjectPolyhedron(Polyhedron cell)
+    public List<Face2> ProjectPolyhedron(Polyhedron3 cell)
     {
         return cell.Faces.Select(this.ProjectFace).Where(f => f != null).ToList();
     }
 
-    public List<Face2> ProjectPolyhedrons(List<Polyhedron> cells)
+    public List<Face2> ProjectPolyhedrons(List<Polyhedron3> cells)
     {
         return cells
             .OrderBy(c => c.Vertices.Select(v => -Vector3.Dot(v, Forward)).Max())
@@ -92,7 +92,7 @@ record Face3Indices(Vector3 Normal, List<Index> Vertices, Color Color)
     }
 }
 
-record Polyhedron(List<Vector3> Vertices, List<Face3Indices> FaceIndices)
+record Polyhedron3(List<Vector3> Vertices, List<Face3Indices> FaceIndices)
 {
     public List<Face3> Faces
     {
@@ -108,9 +108,9 @@ record Polyhedron(List<Vector3> Vertices, List<Face3Indices> FaceIndices)
         }
     }
 
-    public static Polyhedron Cube;
+    public static Polyhedron3 Cube;
 
-    static Polyhedron()
+    static Polyhedron3()
     {
         var cubeVertices = new List<Vector3>();
         var signs = new float[] { +1, -1 };
@@ -158,20 +158,20 @@ record Polyhedron(List<Vector3> Vertices, List<Face3Indices> FaceIndices)
             }, Colors.Orange),
         };
 
-        Cube = new Polyhedron(cubeVertices, cubeFaceIndices);
+        Cube = new Polyhedron3(cubeVertices, cubeFaceIndices);
     }
 
-    public Polyhedron Transform(Quaternion rotation)
+    public Polyhedron3 Transform(Quaternion rotation)
     {
-        return new Polyhedron(
+        return new Polyhedron3(
             Vertices.Select(v => Vector3.Transform(v, rotation)).ToList(),
             FaceIndices.Select(f => f.Transform(rotation)).ToList()
         );
     }
 
-    public Polyhedron Transform(Quaternion rotation, Vector3 translation)
+    public Polyhedron3 Transform(Quaternion rotation, Vector3 translation)
     {
-        return new Polyhedron(
+        return new Polyhedron3(
             Vertices
             .Select(v => Vector3.Transform(v, rotation))
             .Select(v => Vector3.Add(v, translation))

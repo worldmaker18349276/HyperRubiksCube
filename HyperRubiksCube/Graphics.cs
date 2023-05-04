@@ -26,12 +26,12 @@ public class GraphicsDrawable : IDrawable
             ScreenDistance: 2
         );
 
-        var cube1 = Polyhedron.Cube;
-        var cube2 = Polyhedron.Cube.Transform(
+        var cube1 = Polyhedron3.Cube;
+        var cube2 = Polyhedron3.Cube.Transform(
                 Quaternion.CreateFromYawPitchRoll(0.1f, 0.2f, -0.1f),
                 new Vector3(0, -2.2f, 0)
             );
-        screen.DrawFaces(camera.ProjectPolyhedrons(new List<Polyhedron> { cube1, cube2 }));
+        screen.DrawFaces(camera.ProjectPolyhedrons(new List<Polyhedron3> { cube1, cube2 }));
     }
 }
 
