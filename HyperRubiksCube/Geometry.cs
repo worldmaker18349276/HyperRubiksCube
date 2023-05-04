@@ -87,12 +87,12 @@ record Camera3(Quaternion Orientation, float FocalLength, float ScreenDistance)
         return new Face2(vertices, face.Color);
     }
 
-    public List<Face2> ProjectPolyhedron(Polyhedron3 cell)
+    public List<Face2> ProjectPolyhedron(Cell3 cell)
     {
         return cell.Faces.Select(ProjectFace).Where(f => f != null).ToList();
     }
 
-    public List<Face2> ProjectPolyhedrons(List<Polyhedron3> cells)
+    public List<Face2> ProjectPolyhedrons(List<Cell3> cells)
     {
         var faces = cells
             .OrderByDescending(cell => cell.Vertices.Select(ProjectionDistance).Max())
@@ -119,7 +119,7 @@ record Face3Indices(Vector3 Normal, List<Index> Vertices, Color Color)
     }
 }
 
-record Polyhedron3(List<Vector3> Vertices, List<Face3Indices> FaceIndices)
+record Cell3(List<Vector3> Vertices, List<Face3Indices> FaceIndices)
 {
     public List<Face3> Faces
     {
@@ -135,9 +135,9 @@ record Polyhedron3(List<Vector3> Vertices, List<Face3Indices> FaceIndices)
         }
     }
 
-    public static Polyhedron3 Cube;
+    public static Cell3 Cube;
 
-    static Polyhedron3()
+    static Cell3()
     {
         var cubeVertices = new List<Vector3>();
         var signs = new float[] { +1, -1 };
@@ -185,20 +185,20 @@ record Polyhedron3(List<Vector3> Vertices, List<Face3Indices> FaceIndices)
             }, Colors.Orange),
         };
 
-        Cube = new Polyhedron3(cubeVertices, cubeFaceIndices);
+        Cube = new Cell3(cubeVertices, cubeFaceIndices);
     }
 
-    public Polyhedron3 Transform(Quaternion rotation)
+    public Cell3 Transform(Quaternion rotation)
     {
-        return new Polyhedron3(
+        return new Cell3(
             Vertices.Select(v => Vector3.Transform(v, rotation)).ToList(),
             FaceIndices.Select(f => f.Transform(rotation)).ToList()
         );
     }
 
-    public Polyhedron3 Transform(Quaternion rotation, Vector3 translation)
+    public Cell3 Transform(Quaternion rotation, Vector3 translation)
     {
-        return new Polyhedron3(
+        return new Cell3(
             Vertices
             .Select(v => Vector3.Transform(v, rotation))
             .Select(v => Vector3.Add(v, translation))
