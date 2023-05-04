@@ -13,23 +13,39 @@ public class GraphicsDrawable : IDrawable
         var screen = new Screen(
             Canvas: canvas,
             Center: dirtyRect.Center,
-            Ratio: 20
+            Ratio: 50
         );
 
-        var yaw = float.Pi * 1 / 6;
-        var pitch = -float.Pi * 1 / 5;
         var camera = new Camera3(
-            Orientation: Quaternion.CreateFromYawPitchRoll(yaw, pitch, 0),
+            Orientation: Quaternion.CreateFromYawPitchRoll(
+                yaw: float.Pi * 1 / 6,
+                pitch: -float.Pi * 1 / 5,
+                roll: 0
+            ),
             FocalLength: 10,
             ScreenDistance: 2
         );
 
-        var cube1 = Cell3.Cube;
-        var cube2 = Cell3.Cube.Transform(
-                Quaternion.CreateFromYawPitchRoll(0.1f, 0.2f, -0.1f),
-                new Vector3(0, -2.2f, 0)
+        var orientation4 =
+            Matrix4x4Extension.CreateRotationXY(float.Pi / 3)
+            * Matrix4x4.CreateFromYawPitchRoll(
+                yaw: float.Pi * 1 / 6,
+                pitch: -float.Pi * 1 / 5,
+                roll: 0
             );
-        screen.DrawFaces(camera.ProjectPolyhedrons(new List<Cell3> { cube1, cube2 }));
+        var hyperCamera = new Camera4(
+            Orientation: orientation4,
+            FocalLength: -10,
+            ScreenDistance: 2
+        );
+
+        var cells = HyperCube.makeHyperCube(0.3f);
+        var cubes = cells
+            .Select(hyperCamera.ProjectCell)
+            .Where(cell => cell != null)
+            .ToList();
+
+        screen.DrawFaces(camera.ProjectPolyhedrons(cubes));
     }
 }
 

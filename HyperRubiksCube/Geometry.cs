@@ -405,3 +405,18 @@ static class HyperCube
         };
     }
 }
+
+static class Matrix4x4Extension
+{
+    public static Matrix4x4 CreateRotationXY(float angle)
+    {
+        var c = (float) Math.Cos(angle);
+        var s = (float) Math.Sin(angle);
+        return new Matrix4x4(
+            1f, 0f, 0f, 0f,
+            0f, 1f, 0f, 0f,
+            0f, 0f,  c, -s,
+            0f, 0f,  s,  c
+        );
+    }
+}
