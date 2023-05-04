@@ -34,7 +34,8 @@ public class GraphicsDrawable : IDrawable
                 new(-1,  1, 0),
                 new(-1, -1, 0),
                 new( 1, -1, 0)
-            }
+            },
+            Colors.SlateBlue
         );
         face1.Transform(Quaternion.CreateFromAxisAngle(new(1, 1, 0), float.Pi/5));
 
@@ -59,7 +60,7 @@ record Screen(ICanvas Canvas, PointF Center, float Ratio)
             path.MoveTo(Convert(face.Vertices.First()));
         foreach (var curr in face.Vertices.Skip(1))
             path.LineTo(Convert(curr));
-        Canvas.FillColor = Colors.SlateBlue;
+        Canvas.FillColor = face.Color;
         Canvas.FillPath(path);
     }
 }

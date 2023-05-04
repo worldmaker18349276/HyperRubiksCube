@@ -1,5 +1,4 @@
-﻿using Microsoft.Maui.Controls.Shapes;
-using System.Numerics;
+﻿using System.Numerics;
 
 namespace Geometry;
 
@@ -7,11 +6,13 @@ class Face3
 {
     public Vector3 Normal { get; set; }
     public List<Vector3> Vertices { get; set; }
+    public Color Color { get; set; }
 
-    public Face3(Vector3 normal, List<Vector3> vertices)
+    public Face3(Vector3 normal, List<Vector3> vertices, Color color)
     {
         Normal = normal;
         Vertices = vertices;
+        Color = color;
     }
 
     public void Transform(Quaternion rotation)
@@ -24,10 +25,12 @@ class Face3
 class Face2
 {
     public List<Vector2> Vertices { get; set; }
+    public Color Color { get; set; }
 
-    public Face2(List<Vector2> vertices)
+    public Face2(List<Vector2> vertices, Color color)
     {
         Vertices = vertices;
+        Color = color;
     }
 }
 
@@ -82,6 +85,6 @@ class Camera3
             return null;
 
         var vertices = face.Vertices.Select(this.ProjectVector).ToList();
-        return new Face2(vertices);
+        return new Face2(vertices, face.Color);
     }
 }
