@@ -110,9 +110,16 @@ public class HyperCubeScene : IDrawable
 
 class GestureHandler
 {
+    enum ControlMode
+    {
+        SpinMode,
+        GyrospinMode
+    }
+
     double X = 0;
     double Y = 0;
     double Scale = 0;
+    ControlMode Mode = ControlMode.SpinMode;
     readonly double Ratio;
     readonly double ZoomRatio;
     readonly double Tolerance = 0.1;
@@ -136,12 +143,25 @@ class GestureHandler
             case GestureStatus.Running:
                 var x = eventArgs.TotalX;
                 var y = eventArgs.TotalY;
-                var diff = new Vector3((float)((X - x) / Ratio), (float)((y - Y) / Ratio), 0);
-                if (diff.Length() > Tolerance)
+                if (Mode == ControlMode.GyrospinMode)
                 {
-                    Scene.Gyrospin(diff);
-                    X = x;
-                    Y = y;
+                    var diff = new Vector3((float)((X - x) / Ratio), (float)((y - Y) / Ratio), 0);
+                    if (diff.Length() > Tolerance)
+                    {
+                        Scene.Gyrospin(diff);
+                        X = x;
+                        Y = y;
+                    }
+                }
+                else
+                {
+                    var diff = new Vector2((float)((X - x) / Ratio), (float)((y - Y) / Ratio));
+                    if (diff.Length() > Tolerance)
+                    {
+                        Scene.Spin(diff);
+                        X = x;
+                        Y = y;
+                    }
                 }
                 break;
         }
@@ -149,6 +169,8 @@ class GestureHandler
 
     public void OnPinchUpdated(object sender, PinchGestureUpdatedEventArgs eventArgs)
     {
+        if (Mode != ControlMode.GyrospinMode)
+            return;
 
         switch (eventArgs.Status)
         {
@@ -166,6 +188,11 @@ class GestureHandler
                 break;
         }
     }
+
+    public void OnTappedSecondary(object sender, TappedEventArgs eventArgs)
+    {
+        Mode = Mode == ControlMode.SpinMode ? ControlMode.GyrospinMode : ControlMode.SpinMode;
+    }
 }
 
 public partial class HyperCubeView : GraphicsView
@@ -181,6 +208,12 @@ public partial class HyperCubeView : GraphicsView
         var pinchGesture = new PinchGestureRecognizer();
         pinchGesture.PinchUpdated += handler.OnPinchUpdated;
         GestureRecognizers.Add(pinchGesture);
+        var tapsecGestureRecognizer = new TapGestureRecognizer
+        {
+            Buttons = ButtonsMask.Secondary
+        };
+        tapsecGestureRecognizer.Tapped += handler.OnTappedSecondary;
+        GestureRecognizers.Add(tapsecGestureRecognizer);
 
         IDispatcherTimer timer = Dispatcher.CreateTimer();
         timer.Interval = TimeSpan.FromMilliseconds(100);
