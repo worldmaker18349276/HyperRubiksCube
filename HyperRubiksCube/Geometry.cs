@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Linq;
 using System.Numerics;
 
 namespace Geometry;
@@ -149,7 +150,9 @@ record Face3Indices(Vector3 Normal, List<Index> Vertices, Color Color)
     }
 }
 
-record Cell3(List<Vector3> Vertices, List<Face3Indices> FaceIndices)
+record Corner3Indices(Index Vertex, List<(Index, Index)> FaceVertices);
+
+record Cell3(List<Vector3> Vertices, List<Face3Indices> FaceIndices, List<Corner3Indices> CornerIndices)
 {
     public List<Face3> Faces
     {
@@ -215,14 +218,47 @@ record Cell3(List<Vector3> Vertices, List<Face3Indices> FaceIndices)
             }, Colors.Orange),
         };
 
-        Cube = new Cell3(cubeVertices, cubeFaceIndices);
+        var cornerIndices =
+            Enumerable.Range(0, cubeVertices.Count)
+            .Select(k =>
+            {
+                var vertex = cubeVertices[k];
+                var corner = Enumerable.Range(0, cubeFaceIndices.Count)
+                    .Where(i =>
+                    {
+                        var f = cubeFaceIndices[i];
+                        return f.Normal.X == vertex.X
+                            || f.Normal.Y == vertex.Y
+                            || f.Normal.Z == vertex.Z;
+                    })
+                    .Select(i =>
+                    {
+                        var f = cubeFaceIndices[i];
+                        Index j = f.Vertices.FindIndex(v => v.Equals(vertex));
+                        return ((Index) i, j);
+                    })
+                    .ToList();
+
+                Debug.Assert(corner.Count == 3);
+                var normals = corner
+                    .Select(ij => cubeFaceIndices[ij.Item1].Normal)
+                    .ToList();
+                var vol = Vector3.Dot(Vector3.Cross(normals[0], normals[1]), normals[2]);
+                if (vol > 0)
+                    (corner[1], corner[2]) = (corner[2], corner[1]);
+                return new Corner3Indices(k, corner);
+            })
+            .ToList();
+
+        Cube = new Cell3(cubeVertices, cubeFaceIndices, cornerIndices);
     }
 
     public Cell3 Transform(float scale)
     {
         return new Cell3(
             Vertices.Select(v => v * scale).ToList(),
-            FaceIndices
+            FaceIndices,
+            CornerIndices
         );
     }
 
@@ -230,7 +266,8 @@ record Cell3(List<Vector3> Vertices, List<Face3Indices> FaceIndices)
     {
         return new Cell3(
             Vertices.Select(v => Vector3.Transform(v, rotation)).ToList(),
-            FaceIndices.Select(f => f.Transform(rotation)).ToList()
+            FaceIndices.Select(f => f.Transform(rotation)).ToList(),
+            CornerIndices
         );
     }
 
@@ -240,7 +277,8 @@ record Cell3(List<Vector3> Vertices, List<Face3Indices> FaceIndices)
             Vertices
             .Select(v => Vector3.Transform(v, rotation) + translation)
             .ToList(),
-            FaceIndices.Select(f => f.Transform(rotation)).ToList()
+            FaceIndices.Select(f => f.Transform(rotation)).ToList(),
+            CornerIndices
         );
     }
 }
@@ -339,7 +377,7 @@ class Camera4
         var faceIndices = cell.FaceIndices
             .Select(f => new Face3Indices(ProjectTensor((cell.Normal, f.Normal)), f.Vertices, cell.Color))
             .ToList();
-        return new Cell3(vertices, faceIndices);
+        return new Cell3(vertices, faceIndices, cell.CornerIndices);
     }
 }
 
@@ -352,7 +390,7 @@ record Face4Indices(Vector4 Normal, List<Index> Vertices)
 
 }
 
-record Cell4(Vector4 Normal, List<Vector4> Vertices, List<Face4Indices> FaceIndices, Color Color)
+record Cell4(Vector4 Normal, List<Vector4> Vertices, List<Face4Indices> FaceIndices, List<Corner3Indices> CornerIndices, Color Color)
 {
     public Cell4 Transform(float scale)
     {
@@ -360,6 +398,7 @@ record Cell4(Vector4 Normal, List<Vector4> Vertices, List<Face4Indices> FaceIndi
             Normal,
             Vertices.Select(v => v * scale).ToList(),
             FaceIndices,
+            CornerIndices,
             Color
         );
     }
@@ -370,6 +409,7 @@ record Cell4(Vector4 Normal, List<Vector4> Vertices, List<Face4Indices> FaceIndi
             Vector4.Transform(Normal, rotation),
             Vertices.Select(v => Vector4.Transform(v, rotation)).ToList(),
             FaceIndices.Select(f => f.Transform(rotation)).ToList(),
+            CornerIndices,
             Color
         );
     }
@@ -382,6 +422,7 @@ record Cell4(Vector4 Normal, List<Vector4> Vertices, List<Face4Indices> FaceIndi
             .Select(v => Vector4.Transform(v, rotation) + translation)
             .ToList(),
             FaceIndices.Select(f => f.Transform(rotation)).ToList(),
+            CornerIndices,
             Color
         );
     }
@@ -402,6 +443,7 @@ static class HyperCube
                 FaceIndices: cube.FaceIndices
                     .Select(f => new Face4Indices(new Vector4(0, f.Normal.Z, f.Normal.Y, f.Normal.X), f.Vertices))
                     .ToList(),
+                CornerIndices: cube.CornerIndices,
                 Color: Colors.Blue
             ),
             new Cell4(
@@ -412,6 +454,7 @@ static class HyperCube
                 FaceIndices: cube.FaceIndices
                     .Select(f => new Face4Indices(new Vector4(0, f.Normal.X, f.Normal.Y, f.Normal.Z), f.Vertices))
                     .ToList(),
+                CornerIndices: cube.CornerIndices,
                 Color: Colors.Green
             ),
             new Cell4(
@@ -422,6 +465,7 @@ static class HyperCube
                 FaceIndices: cube.FaceIndices
                     .Select(f => new Face4Indices(new Vector4(f.Normal.X, 0, f.Normal.Y, f.Normal.Z), f.Vertices))
                     .ToList(),
+                CornerIndices: cube.CornerIndices,
                 Color: Colors.White
             ),
             new Cell4(
@@ -432,6 +476,7 @@ static class HyperCube
                 FaceIndices: cube.FaceIndices
                     .Select(f => new Face4Indices(new Vector4(f.Normal.Z, 0, f.Normal.Y, f.Normal.X), f.Vertices))
                     .ToList(),
+                CornerIndices: cube.CornerIndices,
                 Color: Colors.Yellow
             ),
             new Cell4(
@@ -442,6 +487,7 @@ static class HyperCube
                 FaceIndices: cube.FaceIndices
                     .Select(f => new Face4Indices(new Vector4(f.Normal.Z, f.Normal.Y, 0, f.Normal.X), f.Vertices))
                     .ToList(),
+                CornerIndices: cube.CornerIndices,
                 Color: Colors.Red
             ),
             new Cell4(
@@ -452,6 +498,7 @@ static class HyperCube
                 FaceIndices: cube.FaceIndices
                     .Select(f => new Face4Indices(new Vector4(f.Normal.X, f.Normal.Y, 0, f.Normal.Z), f.Vertices))
                     .ToList(),
+                CornerIndices: cube.CornerIndices,
                 Color: Colors.Orange
             ),
             new Cell4(
@@ -462,6 +509,7 @@ static class HyperCube
                 FaceIndices: cube.FaceIndices
                     .Select(f => new Face4Indices(new Vector4(f.Normal.X, f.Normal.Y, f.Normal.Z, 0), f.Vertices))
                     .ToList(),
+                CornerIndices: cube.CornerIndices,
                 Color: Colors.Purple
             ),
             new Cell4(
@@ -472,6 +520,7 @@ static class HyperCube
                 FaceIndices: cube.FaceIndices
                     .Select(f => new Face4Indices(new Vector4(f.Normal.Z, f.Normal.Y, f.Normal.X, 0), f.Vertices))
                     .ToList(),
+                CornerIndices: cube.CornerIndices,
                 Color: Colors.Pink
             ),
         };
@@ -500,6 +549,7 @@ static class HyperCube
                 FaceIndices: cube.FaceIndices
                     .Select(f => new Face4Indices(new Vector4(0, f.Normal.Z, f.Normal.Y, f.Normal.X), f.Vertices))
                     .ToList(),
+                CornerIndices: cube.CornerIndices,
                 Color: Colors.Blue
             ));
             res.Add(new Cell4(
@@ -510,6 +560,7 @@ static class HyperCube
                 FaceIndices: cube.FaceIndices
                     .Select(f => new Face4Indices(new Vector4(0, f.Normal.X, f.Normal.Y, f.Normal.Z), f.Vertices))
                     .ToList(),
+                CornerIndices: cube.CornerIndices,
                 Color: Colors.Green
             ));
             res.Add(new Cell4(
@@ -520,6 +571,7 @@ static class HyperCube
                 FaceIndices: cube.FaceIndices
                     .Select(f => new Face4Indices(new Vector4(f.Normal.X, 0, f.Normal.Y, f.Normal.Z), f.Vertices))
                     .ToList(),
+                CornerIndices: cube.CornerIndices,
                 Color: Colors.White
             ));
             res.Add(new Cell4(
@@ -530,6 +582,7 @@ static class HyperCube
                 FaceIndices: cube.FaceIndices
                     .Select(f => new Face4Indices(new Vector4(f.Normal.Z, 0, f.Normal.Y, f.Normal.X), f.Vertices))
                     .ToList(),
+                CornerIndices: cube.CornerIndices,
                 Color: Colors.Yellow
             ));
             res.Add(new Cell4(
@@ -540,6 +593,7 @@ static class HyperCube
                 FaceIndices: cube.FaceIndices
                     .Select(f => new Face4Indices(new Vector4(f.Normal.Z, f.Normal.Y, 0, f.Normal.X), f.Vertices))
                     .ToList(),
+                CornerIndices: cube.CornerIndices,
                 Color: Colors.Red
             ));
             res.Add(new Cell4(
@@ -550,6 +604,7 @@ static class HyperCube
                 FaceIndices: cube.FaceIndices
                     .Select(f => new Face4Indices(new Vector4(f.Normal.X, f.Normal.Y, 0, f.Normal.Z), f.Vertices))
                     .ToList(),
+                CornerIndices: cube.CornerIndices,
                 Color: Colors.Orange
             ));
             res.Add(new Cell4(
@@ -560,6 +615,7 @@ static class HyperCube
                 FaceIndices: cube.FaceIndices
                     .Select(f => new Face4Indices(new Vector4(f.Normal.X, f.Normal.Y, f.Normal.Z, 0), f.Vertices))
                     .ToList(),
+                CornerIndices: cube.CornerIndices,
                 Color: Colors.Purple
             ));
             res.Add(new Cell4(
@@ -570,6 +626,7 @@ static class HyperCube
                 FaceIndices: cube.FaceIndices
                     .Select(f => new Face4Indices(new Vector4(f.Normal.Z, f.Normal.Y, f.Normal.X, 0), f.Vertices))
                     .ToList(),
+                CornerIndices: cube.CornerIndices,
                 Color: Colors.Pink
             ));
         }
