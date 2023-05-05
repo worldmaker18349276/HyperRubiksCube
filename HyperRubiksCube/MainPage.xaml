@@ -6,7 +6,7 @@
 
     <VerticalStackLayout>
         <graphics:HyperCubeView
-                      HeightRequest="300"
-                      WidthRequest="400" />
+                      HeightRequest="600"
+                      WidthRequest="800" />
     </VerticalStackLayout>
 </ContentPage>

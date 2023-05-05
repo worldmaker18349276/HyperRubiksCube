@@ -30,7 +30,7 @@ public class HyperCubeScene : IDrawable
             ) * Matrix4x4Extension.CreateRotationXY(float.Pi / 3);
         HyperCamera = new Camera4(
             orientation: orientation4,
-            focalLength: -10,
+            focalLength: 10,
             screenDistance: 2
         );
 
@@ -45,7 +45,7 @@ public class HyperCubeScene : IDrawable
         var screen = new Screen(
             Canvas: canvas,
             Center: dirtyRect.Center,
-            Ratio: 50
+            Ratio: 100
         );
         var cubes = Cells
             .Select(HyperCamera.ProjectCell)
