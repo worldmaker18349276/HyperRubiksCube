@@ -19,7 +19,7 @@ public class HyperCubeScene : IDrawable
                 pitch: -float.Pi * 1 / 5,
                 roll: 0
             ),
-            focalLength: 10,
+            focalLength: 5,
             screenDistance: 2
         );
 
@@ -31,7 +31,7 @@ public class HyperCubeScene : IDrawable
             ) * Matrix4x4Extension.CreateRotationXY(float.Pi / 3);
         HyperCamera = new Camera4(
             orientation: orientation4,
-            focalLength: -10,
+            focalLength: -3,
             screenDistance: 2
         );
 
@@ -46,7 +46,7 @@ public class HyperCubeScene : IDrawable
         var screen = new Screen(
             Canvas: canvas,
             Center: dirtyRect.Center,
-            Ratio: 100
+            Ratio: 150
         );
         var cubes = Cells
             .Select(HyperCamera.ProjectCell)
@@ -213,8 +213,12 @@ record Screen(ICanvas Canvas, PointF Center, float Ratio)
             path.MoveTo(Convert(face.Vertices.First()));
         foreach (var curr in face.Vertices.Skip(1))
             path.LineTo(Convert(curr));
+        path.LineTo(Convert(face.Vertices.First()));
         Canvas.FillColor = face.Color;
         Canvas.FillPath(path);
+        Canvas.StrokeColor = Colors.Black;
+        Canvas.StrokeSize = 1;
+        Canvas.DrawPath(path);
     }
 
     public void DrawFaces(List<Face2> faces)
