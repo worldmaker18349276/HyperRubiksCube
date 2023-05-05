@@ -108,7 +108,7 @@ public class HyperCubeScene : IDrawable
     }
 }
 
-class PanGestureHandler
+class GestureHandler
 {
     double X = 0;
     double Y = 0;
@@ -118,7 +118,7 @@ class PanGestureHandler
     readonly double Tolerance = 0.1;
     readonly HyperCubeScene Scene;
 
-    public PanGestureHandler(HyperCubeScene scene, double ratio, double zoomRatio)
+    public GestureHandler(HyperCubeScene scene, double ratio, double zoomRatio)
     {
         Scene = scene;
         Ratio = ratio;
@@ -174,7 +174,7 @@ public partial class HyperCubeView : GraphicsView
         var scene = new HyperCubeScene();
         Drawable = scene;
 
-        var handler = new PanGestureHandler(scene, 80, 20);
+        var handler = new GestureHandler(scene, 80, 20);
         var panGesture = new PanGestureRecognizer();
         panGesture.PanUpdated += handler.OnPanUpdated;
         GestureRecognizers.Add(panGesture);
