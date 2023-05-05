@@ -68,26 +68,26 @@ class Camera3
         //     return null;
 
         var vertices = face.Vertices.Select(ProjectPosition).ToList();
-        var normal = ComputeNormal(vertices);
+        var normal = ComputeNormalValue(vertices);
         if (normal < 0)
             return null;
         return new Face2(vertices, face.Color);
     }
 
-    static float ComputeNormal(List<Vector2> vertices)
+    static float ComputeNormalValue(List<Vector2> vertices)
     {
         var v = new List<Vector2>();
         v.Add(vertices[0] - vertices[vertices.Count - 1]);
         for (var i = 1; i < vertices.Count; i++)
             v.Add(vertices[i] - vertices[i - 1]);
         float w = 0;
-        w += Vector2Cross(v[vertices.Count - 1], v[0]);
+        w += DiamondVolume(v[vertices.Count - 1], v[0]);
         for (var i = 1; i < vertices.Count; i++)
-            w += Vector2Cross(v[i - 1], v[i]);
+            w += DiamondVolume(v[i - 1], v[i]);
         return w;
     }
 
-    static float Vector2Cross(Vector2 v1, Vector2 v2)
+    static float DiamondVolume(Vector2 v1, Vector2 v2)
     {
         return v1.X * v2.Y - v1.Y * v2.X;
     }
