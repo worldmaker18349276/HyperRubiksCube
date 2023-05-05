@@ -10,8 +10,6 @@ public class HyperCubeScene : IDrawable
     Camera4 HyperCamera;
     List<Cell4> Cells;
 
-    Matrix4x4 Step;
-
     public HyperCubeScene()
     {
         Camera = new Camera3(
@@ -37,14 +35,6 @@ public class HyperCubeScene : IDrawable
         );
 
         Cells = HyperCube.makeHyperCube(0.3f);
-
-        Step =
-            Matrix4x4Extension.CreateRotationXY(float.Pi / 120)
-            * Matrix4x4.CreateFromYawPitchRoll(
-                yaw: float.Pi / 100,
-                pitch: float.Pi / 160,
-                roll: float.Pi / 200
-            );
     }
 
     void IDrawable.Draw(ICanvas canvas, RectF dirtyRect)
@@ -100,11 +90,6 @@ public class HyperCubeScene : IDrawable
         var rotation = Matrix4x4Extension.Create4DRotationFromAxisAngle(axis, scale);
 
         HyperCamera.Orientation = (rotation * HyperCamera.Orientation).Normalize();
-    }
-
-    public void Advance()
-    {
-        HyperCamera.Orientation = (HyperCamera.Orientation * Step).Normalize();
     }
 }
 
@@ -218,7 +203,6 @@ public partial class HyperCubeView : GraphicsView
         IDispatcherTimer timer = Dispatcher.CreateTimer();
         timer.Interval = TimeSpan.FromMilliseconds(100);
         timer.Tick += (s, e) => {
-            // scene.Advance();
             Invalidate();
         };
         timer.Start();
