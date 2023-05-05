@@ -93,10 +93,6 @@ public class HyperCubeScene : IDrawable
     }
 }
 
-class GestureHandler
-{
-}
-
 public partial class HyperCubeView : GraphicsView
 {
     enum ControlMode
