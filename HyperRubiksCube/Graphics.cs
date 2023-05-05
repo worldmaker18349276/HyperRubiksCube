@@ -25,12 +25,11 @@ public class HyperCubeScene : IDrawable
         );
 
         var orientation4 =
-            Matrix4x4Extension.CreateRotationXY(float.Pi / 3)
-            * Matrix4x4.CreateFromYawPitchRoll(
+            Matrix4x4.CreateFromYawPitchRoll(
                 yaw: float.Pi * 1 / 6,
                 pitch: -float.Pi * 1 / 5,
                 roll: 0
-            );
+            ) * Matrix4x4Extension.CreateRotationXY(float.Pi / 3);
         HyperCamera = new Camera4(
             orientation: orientation4,
             focalLength: -10,
@@ -68,14 +67,44 @@ public class HyperCubeScene : IDrawable
     public void Spin(Vector2 diff)
     {
         var scale = diff.Length();
+        // axis = (0,0,-1) x (diff.X, diff.Y, 0)
         var axis = Vector3.Normalize(new(-diff.Y, diff.X, 0));
         var rotation = Quaternion.CreateFromAxisAngle(axis, scale);
         Camera.Orientation = Quaternion.Normalize(Camera.Orientation * rotation);
     }
 
+    public void Gyrospin(Vector3 diff)
+    {
+        var scale = diff.Length();
+        diff = Vector3.Transform(diff, Quaternion.Inverse(Camera.Orientation));
+
+        // find two orthogonal vectors (axis1, axis2) to diff
+
+        // axis1 = (0,0,-1) x diff or (0,1,0) x diff
+        var axis11 = Vector3.Cross(new(0, 0, -1), diff);
+        var axis12 = Vector3.Cross(new(0, 1, 0), diff);
+        Vector3 axis1;
+        if (axis11.Length() > axis12.Length())
+            axis1 = axis11;
+        else
+            axis1 = axis12;
+        axis1 = Vector3.Normalize(axis1);
+
+        // axis2 = diff x axis1
+        var axis2 = Vector3.Normalize(Vector3.Cross(diff, axis1));
+
+        var axis = (
+            new Vector4(axis1.X, axis1.Y, axis1.Z, 0),
+            new Vector4(axis2.X, axis2.Y, axis2.Z, 0)
+        );
+        var rotation = Matrix4x4Extension.Create4DRotationFromAxisAngle(axis, scale);
+
+        HyperCamera.Orientation = (rotation * HyperCamera.Orientation).Normalize();
+    }
+
     public void Advance()
     {
-        HyperCamera.Orientation = (Step * HyperCamera.Orientation).Normalize();
+        HyperCamera.Orientation = (HyperCamera.Orientation * Step).Normalize();
     }
 }
 
@@ -104,10 +133,10 @@ class PanGestureHandler
             case GestureStatus.Running:
                 var x = eventArgs.TotalX;
                 var y = eventArgs.TotalY;
-                var diff = new Vector2((float)((X - x) / Ratio), (float)((y - Y) / Ratio));
+                var diff = new Vector3((float)((X - x) / Ratio), (float)((y - Y) / Ratio), 0);
                 if (diff.Length() > Tolerance)
                 {
-                    Scene.Spin(diff);
+                    Scene.Gyrospin(diff);
                     X = x;
                     Y = y;
                 }
@@ -123,14 +152,14 @@ public partial class HyperCubeView : GraphicsView
         Drawable = scene;
 
         var panGesture = new PanGestureRecognizer();
-        var handler = new PanGestureHandler(scene, 30);
+        var handler = new PanGestureHandler(scene, 80);
         panGesture.PanUpdated += handler.OnPanUpdated;
         GestureRecognizers.Add(panGesture);
 
         IDispatcherTimer timer = Dispatcher.CreateTimer();
         timer.Interval = TimeSpan.FromMilliseconds(100);
         timer.Tick += (s, e) => {
-            scene.Advance();
+            // scene.Advance();
             Invalidate();
         };
         timer.Start();
