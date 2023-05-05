@@ -95,29 +95,45 @@ public class HyperCubeScene : IDrawable
 
 class GestureHandler
 {
+}
+
+public partial class HyperCubeView : GraphicsView
+{
     enum ControlMode
     {
         SpinMode,
         GyrospinMode
     }
 
-    double X = 0;
-    double Y = 0;
-    double Scale = 0;
+    new double X = 0;
+    new double Y = 0;
+    new double Scale = 0;
     ControlMode Mode = ControlMode.SpinMode;
-    readonly double Ratio;
-    readonly double ZoomRatio;
+    readonly double Ratio = 80;
+    readonly double ZoomRatio = 20;
     readonly double Tolerance = 0.1;
     readonly HyperCubeScene Scene;
 
-    public GestureHandler(HyperCubeScene scene, double ratio, double zoomRatio)
+    public HyperCubeView()
     {
-        Scene = scene;
-        Ratio = ratio;
-        ZoomRatio = zoomRatio;
+        Scene = new HyperCubeScene();
+        Drawable = Scene;
+
+        var panGesture = new PanGestureRecognizer();
+        panGesture.PanUpdated += OnPanUpdated;
+        GestureRecognizers.Add(panGesture);
+        var pinchGesture = new PinchGestureRecognizer();
+        pinchGesture.PinchUpdated += OnPinchUpdated;
+        GestureRecognizers.Add(pinchGesture);
+        var tapsecGestureRecognizer = new TapGestureRecognizer
+        {
+            Buttons = ButtonsMask.Secondary
+        };
+        tapsecGestureRecognizer.Tapped += OnTappedSecondary;
+        GestureRecognizers.Add(tapsecGestureRecognizer);
     }
 
-    public void OnPanUpdated(object sender, PanUpdatedEventArgs eventArgs)
+    void OnPanUpdated(object sender, PanUpdatedEventArgs eventArgs)
     {
         switch (eventArgs.StatusType)
         {
@@ -136,6 +152,7 @@ class GestureHandler
                         Scene.Gyrospin(diff);
                         X = x;
                         Y = y;
+                        Invalidate();
                     }
                 }
                 else
@@ -146,13 +163,14 @@ class GestureHandler
                         Scene.Spin(diff);
                         X = x;
                         Y = y;
+                        Invalidate();
                     }
                 }
                 break;
         }
     }
 
-    public void OnPinchUpdated(object sender, PinchGestureUpdatedEventArgs eventArgs)
+    void OnPinchUpdated(object sender, PinchGestureUpdatedEventArgs eventArgs)
     {
         if (Mode != ControlMode.GyrospinMode)
             return;
@@ -164,48 +182,20 @@ class GestureHandler
                 break;
             case GestureStatus.Running:
                 var currentScale = eventArgs.Scale;
-                var diff = new Vector3(0, 0, (float) ((currentScale - Scale) / ZoomRatio));
+                var diff = new Vector3(0, 0, (float)((currentScale - Scale) / ZoomRatio));
                 if (diff.Length() > Tolerance)
                 {
                     Scene.Gyrospin(diff);
                     Scale = currentScale;
+                    Invalidate();
                 }
                 break;
         }
     }
 
-    public void OnTappedSecondary(object sender, TappedEventArgs eventArgs)
+    void OnTappedSecondary(object sender, TappedEventArgs eventArgs)
     {
         Mode = Mode == ControlMode.SpinMode ? ControlMode.GyrospinMode : ControlMode.SpinMode;
-    }
-}
-
-public partial class HyperCubeView : GraphicsView
-{
-    public HyperCubeView() {
-        var scene = new HyperCubeScene();
-        Drawable = scene;
-
-        var handler = new GestureHandler(scene, 80, 20);
-        var panGesture = new PanGestureRecognizer();
-        panGesture.PanUpdated += handler.OnPanUpdated;
-        GestureRecognizers.Add(panGesture);
-        var pinchGesture = new PinchGestureRecognizer();
-        pinchGesture.PinchUpdated += handler.OnPinchUpdated;
-        GestureRecognizers.Add(pinchGesture);
-        var tapsecGestureRecognizer = new TapGestureRecognizer
-        {
-            Buttons = ButtonsMask.Secondary
-        };
-        tapsecGestureRecognizer.Tapped += handler.OnTappedSecondary;
-        GestureRecognizers.Add(tapsecGestureRecognizer);
-
-        IDispatcherTimer timer = Dispatcher.CreateTimer();
-        timer.Interval = TimeSpan.FromMilliseconds(100);
-        timer.Tick += (s, e) => {
-            Invalidate();
-        };
-        timer.Start();
     }
 }
 
