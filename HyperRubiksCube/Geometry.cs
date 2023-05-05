@@ -113,6 +113,12 @@ record Face3(Vector3 Normal, List<Vector3> Vertices, Color Color)
         return w;
     }
 
+    public Face3 Transform(float scale)
+    {
+        var vertices = Vertices.Select(v => v * scale).ToList();
+        return new Face3(Normal, vertices, Color);
+    }
+
     public Face3 Transform(Quaternion rotation)
     {
         var normal = Vector3.Transform(Normal, rotation);
@@ -205,6 +211,14 @@ record Cell3(List<Vector3> Vertices, List<Face3Indices> FaceIndices)
         };
 
         Cube = new Cell3(cubeVertices, cubeFaceIndices);
+    }
+
+    public Cell3 Transform(float scale)
+    {
+        return new Cell3(
+            Vertices.Select(v => v * scale).ToList(),
+            FaceIndices
+        );
     }
 
     public Cell3 Transform(Quaternion rotation)
@@ -335,6 +349,16 @@ record Face4Indices(Vector4 Normal, List<Index> Vertices)
 
 record Cell4(Vector4 Normal, List<Vector4> Vertices, List<Face4Indices> FaceIndices, Color Color)
 {
+    public Cell4 Transform(float scale)
+    {
+        return new Cell4(
+            Normal,
+            Vertices.Select(v => v * scale).ToList(),
+            FaceIndices,
+            Color
+        );
+    }
+
     public Cell4 Transform(Matrix4x4 rotation)
     {
         return new Cell4(
