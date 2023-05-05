@@ -112,14 +112,17 @@ class PanGestureHandler
 {
     double X = 0;
     double Y = 0;
+    double Scale = 0;
     readonly double Ratio;
+    readonly double ZoomRatio;
     readonly double Tolerance = 0.1;
     readonly HyperCubeScene Scene;
 
-    public PanGestureHandler(HyperCubeScene scene, double ratio)
+    public PanGestureHandler(HyperCubeScene scene, double ratio, double zoomRatio)
     {
         Scene = scene;
         Ratio = ratio;
+        ZoomRatio = zoomRatio;
     }
 
     public void OnPanUpdated(object sender, PanUpdatedEventArgs eventArgs)
@@ -143,6 +146,26 @@ class PanGestureHandler
                 break;
         }
     }
+
+    public void OnPinchUpdated(object sender, PinchGestureUpdatedEventArgs eventArgs)
+    {
+
+        switch (eventArgs.Status)
+        {
+            case GestureStatus.Started:
+                Scale = eventArgs.Scale;
+                break;
+            case GestureStatus.Running:
+                var currentScale = eventArgs.Scale;
+                var diff = new Vector3(0, 0, (float) ((currentScale - Scale) / ZoomRatio));
+                if (diff.Length() > Tolerance)
+                {
+                    Scene.Gyrospin(diff);
+                    Scale = currentScale;
+                }
+                break;
+        }
+    }
 }
 
 public partial class HyperCubeView : GraphicsView
@@ -151,10 +174,13 @@ public partial class HyperCubeView : GraphicsView
         var scene = new HyperCubeScene();
         Drawable = scene;
 
+        var handler = new PanGestureHandler(scene, 80, 20);
         var panGesture = new PanGestureRecognizer();
-        var handler = new PanGestureHandler(scene, 80);
         panGesture.PanUpdated += handler.OnPanUpdated;
         GestureRecognizers.Add(panGesture);
+        var pinchGesture = new PinchGestureRecognizer();
+        pinchGesture.PinchUpdated += handler.OnPinchUpdated;
+        GestureRecognizers.Add(pinchGesture);
 
         IDispatcherTimer timer = Dispatcher.CreateTimer();
         timer.Interval = TimeSpan.FromMilliseconds(100);
