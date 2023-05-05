@@ -1,4 +1,5 @@
 ﻿using Geometry;
+using Microsoft.UI.Xaml.Controls;
 using System.Numerics;
 
 namespace Graphics;
@@ -30,11 +31,11 @@ public class HyperCubeScene : IDrawable
             ) * Matrix4x4Extension.CreateRotationXY(float.Pi / 3);
         HyperCamera = new Camera4(
             orientation: orientation4,
-            focalLength: 10,
+            focalLength: -10,
             screenDistance: 2
         );
 
-        Cells = HyperCube.makeHyperCube(0.3f);
+        Cells = HyperCube.makeHyperRubiksCube(0.3f, 0.1f);
     }
 
     void IDrawable.Draw(ICanvas canvas, RectF dirtyRect)

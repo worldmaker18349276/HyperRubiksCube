@@ -471,6 +471,106 @@ static class HyperCube
             ),
         };
     }
+
+    public static List<Cell4> makeHyperRubiksCube(float gapWidth, float cellHeight)
+    {
+        var r = (1 + gapWidth) / 3;
+        var grid = new List<float> { -r, 0, r };
+        var cube0 = Cell3.Cube.Transform((1 - 2 * gapWidth) / 3);
+        var cubes =
+            from x in grid
+            from y in grid
+            from z in grid
+            select cube0.Transform(Quaternion.Identity, new Vector3(x, y, z));
+
+        var res = new List<Cell4>();
+
+        foreach (var cube in cubes)
+        {
+            res.Add(new Cell4(
+                Normal: new( 1, 0, 0, 0),
+                Vertices: cube.Vertices
+                    .Select(v => new Vector4(1 + cellHeight, v.Z, v.Y, v.X))
+                    .ToList(),
+                FaceIndices: cube.FaceIndices
+                    .Select(f => new Face4Indices(new Vector4(0, f.Normal.Z, f.Normal.Y, f.Normal.X), f.Vertices))
+                    .ToList(),
+                Color: Colors.Blue
+            ));
+            res.Add(new Cell4(
+                Normal: new(-1, 0, 0, 0),
+                Vertices: cube.Vertices
+                    .Select(v => new Vector4(-1 - cellHeight, v.X, v.Y, v.Z))
+                    .ToList(),
+                FaceIndices: cube.FaceIndices
+                    .Select(f => new Face4Indices(new Vector4(0, f.Normal.X, f.Normal.Y, f.Normal.Z), f.Vertices))
+                    .ToList(),
+                Color: Colors.Green
+            ));
+            res.Add(new Cell4(
+                Normal: new(0, 1, 0, 0),
+                Vertices: cube.Vertices
+                    .Select(v => new Vector4(v.X, 1 + cellHeight, v.Y, v.Z))
+                    .ToList(),
+                FaceIndices: cube.FaceIndices
+                    .Select(f => new Face4Indices(new Vector4(f.Normal.X, 0, f.Normal.Y, f.Normal.Z), f.Vertices))
+                    .ToList(),
+                Color: Colors.White
+            ));
+            res.Add(new Cell4(
+                Normal: new(0, -1, 0, 0),
+                Vertices: cube.Vertices
+                    .Select(v => new Vector4(v.Z, -1 - cellHeight, v.Y, v.X))
+                    .ToList(),
+                FaceIndices: cube.FaceIndices
+                    .Select(f => new Face4Indices(new Vector4(f.Normal.Z, 0, f.Normal.Y, f.Normal.X), f.Vertices))
+                    .ToList(),
+                Color: Colors.Yellow
+            ));
+            res.Add(new Cell4(
+                Normal: new(0, 0, 1, 0),
+                Vertices: cube.Vertices
+                    .Select(v => new Vector4(v.Z, v.Y, 1 + cellHeight, v.X))
+                    .ToList(),
+                FaceIndices: cube.FaceIndices
+                    .Select(f => new Face4Indices(new Vector4(f.Normal.Z, f.Normal.Y, 0, f.Normal.X), f.Vertices))
+                    .ToList(),
+                Color: Colors.Red
+            ));
+            res.Add(new Cell4(
+                Normal: new(0, 0, -1, 0),
+                Vertices: cube.Vertices
+                    .Select(v => new Vector4(v.X, v.Y, -1 - cellHeight, v.Z))
+                    .ToList(),
+                FaceIndices: cube.FaceIndices
+                    .Select(f => new Face4Indices(new Vector4(f.Normal.X, f.Normal.Y, 0, f.Normal.Z), f.Vertices))
+                    .ToList(),
+                Color: Colors.Orange
+            ));
+            res.Add(new Cell4(
+                Normal: new(0, 0, 0, 1),
+                Vertices: cube.Vertices
+                    .Select(v => new Vector4(v.X, v.Y, v.Z, 1 + cellHeight))
+                    .ToList(),
+                FaceIndices: cube.FaceIndices
+                    .Select(f => new Face4Indices(new Vector4(f.Normal.X, f.Normal.Y, f.Normal.Z, 0), f.Vertices))
+                    .ToList(),
+                Color: Colors.Purple
+            ));
+            res.Add(new Cell4(
+                Normal: new(0, 0, 0, -1),
+                Vertices: cube.Vertices
+                    .Select(v => new Vector4(v.Z, v.Y, v.X, -1 - cellHeight))
+                    .ToList(),
+                FaceIndices: cube.FaceIndices
+                    .Select(f => new Face4Indices(new Vector4(f.Normal.Z, f.Normal.Y, f.Normal.X, 0), f.Vertices))
+                    .ToList(),
+                Color: Colors.Pink
+            ));
+        }
+
+        return res;
+    }
 }
 
 static class Matrix4x4Extension
