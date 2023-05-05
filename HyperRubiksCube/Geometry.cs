@@ -66,16 +66,7 @@ class Camera3
     {
         // if (Vector3.Dot(face.Normal, Looking) > 0)
         //     return null;
-        var v = new List<Vector3>();
-        v.Add(face.Vertices[0] - face.Vertices[face.Vertices.Count - 1]);
-        for (var i = 1; i < face.Vertices.Count; i++)
-            v.Add(face.Vertices[i] - face.Vertices[i - 1]);
-        var w = new Vector3(0, 0, 0);
-        w += Vector3.Cross(v[face.Vertices.Count - 1], v[0]);
-        for (var i = 1; i < face.Vertices.Count; i++)
-            w += Vector3.Cross(v[i - 1], v[i]);
-
-        if (Vector3.Dot(w, Looking) > 0)
+        if (Vector3.Dot(face.ComputeNormal(), Looking) > 0)
             return null;
 
         var vertices = face.Vertices.Select(ProjectPosition).ToList();
@@ -108,6 +99,20 @@ class Camera3
 
 record Face3(Vector3 Normal, List<Vector3> Vertices, Color Color)
 {
+    public Vector3 ComputeNormal()
+    {
+        var v = new List<Vector3>();
+        v.Add(Vertices[0] - Vertices[Vertices.Count - 1]);
+        for (var i = 1; i < Vertices.Count; i++)
+            v.Add(Vertices[i] - Vertices[i - 1]);
+        var w = new Vector3(0, 0, 0);
+        w += Vector3.Cross(v[Vertices.Count - 1], v[0]);
+        for (var i = 1; i < Vertices.Count; i++)
+            w += Vector3.Cross(v[i - 1], v[i]);
+
+        return w;
+    }
+
     public Face3 Transform(Quaternion rotation)
     {
         var normal = Vector3.Transform(Normal, rotation);
