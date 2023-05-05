@@ -76,7 +76,7 @@ public class HyperCubeScene : IDrawable
     public void Gyrospin(Vector3 diff)
     {
         var scale = diff.Length();
-        diff = Vector3.Transform(diff, Quaternion.Inverse(Camera.Orientation));
+        diff = Vector3.Transform(diff, Camera.Orientation);
 
         // find two orthogonal vectors (axis1, axis2) to diff
 
