@@ -1,5 +1,4 @@
 ﻿using Geometry;
-using Microsoft.UI.Xaml.Controls;
 using System.Numerics;
 
 namespace Graphics;
@@ -105,10 +104,10 @@ public partial class HyperCubeView : GraphicsView
     new double X = 0;
     new double Y = 0;
     new double Scale = 0;
-    ControlMode Mode = ControlMode.SpinMode;
-    readonly double Ratio = 80;
+    ControlMode Mode = ControlMode.GyrospinMode;
+    readonly double DragRatio = 80;
     readonly double ZoomRatio = 20;
-    readonly double Tolerance = 0.1;
+    readonly double MotionMinValue = 0.02;
     readonly HyperCubeScene Scene;
 
     public HyperCubeView()
@@ -143,8 +142,8 @@ public partial class HyperCubeView : GraphicsView
                 var y = eventArgs.TotalY;
                 if (Mode == ControlMode.GyrospinMode)
                 {
-                    var diff = new Vector3((float)((X - x) / Ratio), (float)((y - Y) / Ratio), 0);
-                    if (diff.Length() > Tolerance)
+                    var diff = new Vector3((float)((X - x) / DragRatio), (float)((y - Y) / DragRatio), 0);
+                    if (diff.Length() > MotionMinValue)
                     {
                         Scene.Gyrospin(diff);
                         X = x;
@@ -154,8 +153,8 @@ public partial class HyperCubeView : GraphicsView
                 }
                 else
                 {
-                    var diff = new Vector2((float)((X - x) / Ratio), (float)((y - Y) / Ratio));
-                    if (diff.Length() > Tolerance)
+                    var diff = new Vector2((float)((X - x) / DragRatio), (float)((y - Y) / DragRatio));
+                    if (diff.Length() > MotionMinValue)
                     {
                         Scene.Spin(diff);
                         X = x;
@@ -180,7 +179,7 @@ public partial class HyperCubeView : GraphicsView
             case GestureStatus.Running:
                 var currentScale = eventArgs.Scale;
                 var diff = new Vector3(0, 0, (float)((currentScale - Scale) / ZoomRatio));
-                if (diff.Length() > Tolerance)
+                if (diff.Length() > MotionMinValue)
                 {
                     Scene.Gyrospin(diff);
                     Scale = currentScale;
