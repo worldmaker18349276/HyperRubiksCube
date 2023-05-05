@@ -69,21 +69,24 @@ class Camera3
         //     return null;
 
         var vertices = face.Vertices.Select(ProjectPosition).ToList();
-        var normal = ComputeNormalValue(vertices);
-        if (normal < 0)
+        var faceProj = new Face2(vertices, face.Color);
+        if (ComputeNormalValue(faceProj) < 0)
             return null;
-        return new Face2(vertices, face.Color);
+        return faceProj;
     }
 
-    static float ComputeNormalValue(List<Vector2> vertices)
+    static float ComputeNormalValue(Face2 face)
     {
+        if (face.Vertices.Count < 3)
+            return 0;
+
         var v = new List<Vector2>();
-        v.Add(vertices[0] - vertices[vertices.Count - 1]);
-        for (var i = 1; i < vertices.Count; i++)
-            v.Add(vertices[i] - vertices[i - 1]);
+        v.Add(face.Vertices[0] - face.Vertices[face.Vertices.Count - 1]);
+        for (var i = 1; i < face.Vertices.Count; i++)
+            v.Add(face.Vertices[i] - face.Vertices[i - 1]);
         float w = 0;
-        w += DiamondVolume(v[vertices.Count - 1], v[0]);
-        for (var i = 1; i < vertices.Count; i++)
+        w += DiamondVolume(v[face.Vertices.Count - 1], v[0]);
+        for (var i = 1; i < face.Vertices.Count; i++)
             w += DiamondVolume(v[i - 1], v[i]);
         return w;
     }
@@ -233,9 +236,9 @@ record Cell3(List<Vector3> Vertices, List<Face3Indices> FaceIndices, List<Corner
                     })
                     .Select(i =>
                     {
-                        var f = cubeFaceIndices[i];
-                        Index j = f.Vertices.FindIndex(v => v.Equals(vertex));
-                        return ((Index) i, j);
+                        var j = cubeFaceIndices[i].Vertices.FindIndex(j => k == j.Value);
+                        Debug.Assert(j != -1);
+                        return ((Index) i, (Index) j);
                     })
                     .ToList();
 
@@ -370,14 +373,64 @@ class Camera4
 
     public Cell3 ProjectCell(Cell4 cell)
     {
-        if (Vector4.Dot(cell.Normal, Looking) > 0)
-            return null;
+        // if (Vector4.Dot(cell.Normal, Looking) > 0)
+        //     return null;
 
         var vertices = cell.Vertices.Select(ProjectPosition).ToList();
         var faceIndices = cell.FaceIndices
             .Select(f => new Face3Indices(ProjectTensor((cell.Normal, f.Normal)), f.Vertices, cell.Color))
             .ToList();
-        return new Cell3(vertices, faceIndices, cell.CornerIndices);
+        var cellProj = new Cell3(vertices, faceIndices, cell.CornerIndices);
+        if (ComputeNormalValue(cellProj) < 0)
+            return null;
+        return cellProj;
+    }
+
+    static float ComputeNormalValue(Cell3 cell)
+    {
+        float w = 0;
+        foreach (var corner in cell.CornerIndices)
+        {
+            var vertex = cell.Vertices[corner.Vertex];
+            var edges = corner.FaceVertices
+                .Select(ij =>
+                {
+                    var face = cell.FaceIndices[ij.Item1];
+                    var j = ij.Item2.Value + 1;
+                    j = j < face.Vertices.Count ? j : 0;
+                    var vertexNext = cell.Vertices[face.Vertices[j]];
+                    return vertexNext - vertex;
+                })
+                .ToList();
+            w += DiamondVolume(edges);
+        }
+        return w;
+    }
+
+    static float DiamondVolume(List<Vector3> edges)
+    {
+        if (edges.Count < 3)
+            return 0;
+
+        float vol = 0;
+        var v00 = edges[edges.Count - 2];
+        var v01 = edges[edges.Count - 1];
+        var v02 = edges[0];
+        vol += Vector3.Dot(Vector3.Cross(v00, v01), v02);
+
+        var v10 = edges[edges.Count - 1];
+        var v11 = edges[0];
+        var v12 = edges[1];
+        vol += Vector3.Dot(Vector3.Cross(v10, v11), v12);
+
+        for (var i = 2; i < edges.Count; i++)
+        {
+            var v0 = edges[i - 2];
+            var v1 = edges[i - 1];
+            var v2 = edges[i];
+            vol += Vector3.Dot(Vector3.Cross(v0, v1), v2);
+        }
+        return vol;
     }
 }
 
