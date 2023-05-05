@@ -15,13 +15,13 @@ public class HyperCubeScene : IDrawable
     public HyperCubeScene()
     {
         Camera = new Camera3(
-            Orientation: Quaternion.CreateFromYawPitchRoll(
+            orientation: Quaternion.CreateFromYawPitchRoll(
                 yaw: float.Pi * 1 / 6,
                 pitch: -float.Pi * 1 / 5,
                 roll: 0
             ),
-            FocalLength: 10,
-            ScreenDistance: 2
+            focalLength: 10,
+            screenDistance: 2
         );
 
         var orientation4 =
@@ -32,9 +32,9 @@ public class HyperCubeScene : IDrawable
                 roll: 0
             );
         HyperCamera = new Camera4(
-            Orientation: orientation4,
-            FocalLength: -10,
-            ScreenDistance: 2
+            orientation: orientation4,
+            focalLength: -10,
+            screenDistance: 2
         );
 
         Cells = HyperCube.makeHyperCube(0.3f);
@@ -65,13 +65,54 @@ public class HyperCubeScene : IDrawable
         screen.DrawFaces(Camera.ProjectCells(cubes));
     }
 
+    public void Spin(Vector2 diff)
+    {
+        var scale = diff.Length();
+        var axis = Vector3.Normalize(new(-diff.Y, diff.X, 0));
+        var rotation = Quaternion.CreateFromAxisAngle(axis, scale);
+        Camera.Orientation = Quaternion.Normalize(Camera.Orientation * rotation);
+    }
+
     public void Advance()
     {
-        var nextOrientation = Step * HyperCamera.Orientation;
-        var det = nextOrientation.GetDeterminant();
-        var scale = 1 / Math.Sqrt(Math.Sqrt(det));
-        nextOrientation = Matrix4x4.CreateScale((float)scale) * nextOrientation;
-        HyperCamera = HyperCamera with { Orientation = nextOrientation };
+        HyperCamera.Orientation = (Step * HyperCamera.Orientation).Normalize();
+    }
+}
+
+class PanGestureHandler
+{
+    double X = 0;
+    double Y = 0;
+    readonly double Ratio;
+    readonly double Tolerance = 0.1;
+    readonly HyperCubeScene Scene;
+
+    public PanGestureHandler(HyperCubeScene scene, double ratio)
+    {
+        Scene = scene;
+        Ratio = ratio;
+    }
+
+    public void OnPanUpdated(object sender, PanUpdatedEventArgs eventArgs)
+    {
+        switch (eventArgs.StatusType)
+        {
+            case GestureStatus.Started:
+                X = eventArgs.TotalX;
+                Y = eventArgs.TotalY;
+                break;
+            case GestureStatus.Running:
+                var x = eventArgs.TotalX;
+                var y = eventArgs.TotalY;
+                var diff = new Vector2((float)((X - x) / Ratio), (float)((y - Y) / Ratio));
+                if (diff.Length() > Tolerance)
+                {
+                    Scene.Spin(diff);
+                    X = x;
+                    Y = y;
+                }
+                break;
+        }
     }
 }
 
@@ -80,6 +121,11 @@ public partial class HyperCubeView : GraphicsView
     public HyperCubeView() {
         var scene = new HyperCubeScene();
         Drawable = scene;
+
+        var panGesture = new PanGestureRecognizer();
+        var handler = new PanGestureHandler(scene, 30);
+        panGesture.PanUpdated += handler.OnPanUpdated;
+        GestureRecognizers.Add(panGesture);
 
         IDispatcherTimer timer = Dispatcher.CreateTimer();
         timer.Interval = TimeSpan.FromMilliseconds(100);

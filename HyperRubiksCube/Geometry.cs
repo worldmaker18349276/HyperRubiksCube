@@ -5,8 +5,19 @@ namespace Geometry;
 
 record Face2(List<Vector2> Vertices, Color Color);
 
-record Camera3(Quaternion Orientation, float FocalLength, float ScreenDistance)
+class Camera3
 {
+    public Quaternion Orientation { get; set; }
+    public float FocalLength { get; set; }
+    public float ScreenDistance { get; set; }
+
+    public Camera3(Quaternion orientation, float focalLength, float screenDistance)
+    {
+        Orientation = orientation;
+        FocalLength = focalLength;
+        ScreenDistance = screenDistance;
+    }
+
     public Vector3 Looking
     {
         get
@@ -29,12 +40,6 @@ record Camera3(Quaternion Orientation, float FocalLength, float ScreenDistance)
         {
             return Vector3.Transform(new Vector3(0, 0, FocalLength), Orientation);
         }
-    }
-
-    public Camera3 Transform(Quaternion rotation)
-    {
-        var orientation = rotation * Orientation;
-        return this with { Orientation = orientation };
     }
 
     public Vector2 ProjectPosition(Vector3 position)
@@ -205,8 +210,19 @@ record Cell3(List<Vector3> Vertices, List<Face3Indices> FaceIndices)
     }
 }
 
-record Camera4(Matrix4x4 Orientation, float FocalLength, float ScreenDistance)
+class Camera4
 {
+    public Matrix4x4 Orientation { get; set; }
+    public float FocalLength { get; set; }
+    public float ScreenDistance { get; set; }
+
+    public Camera4(Matrix4x4 orientation, float focalLength, float screenDistance)
+    {
+        Orientation = orientation;
+        FocalLength = focalLength;
+        ScreenDistance = screenDistance;
+    }
+
     public Vector4 Looking
     {
         get
@@ -237,12 +253,6 @@ record Camera4(Matrix4x4 Orientation, float FocalLength, float ScreenDistance)
         {
             return Vector4.Transform(new Vector4(0, 0, 0, FocalLength), Orientation);
         }
-    }
-
-    public Camera4 Transform(Matrix4x4 rotation)
-    {
-        var orientation = rotation * Orientation;
-        return this with { Orientation = orientation };
     }
 
     public Vector3 ProjectPosition(Vector4 position)
@@ -435,5 +445,12 @@ static class Matrix4x4Extension
             0f, 0f,  c, -s,
             0f, 0f,  s,  c
         );
+    }
+
+    public static Matrix4x4 Normalize(this Matrix4x4 mat)
+    {
+        var det = mat.GetDeterminant();
+        var scale = 1 / Math.Sqrt(Math.Sqrt(det));
+        return Matrix4x4.CreateScale((float)scale) * mat;
     }
 }
