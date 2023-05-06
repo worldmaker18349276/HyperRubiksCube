@@ -1,9 +1,24 @@
-﻿using System.Diagnostics;
+﻿using Microsoft.Maui.Controls;
+using System.Diagnostics;
+using System.Linq;
 using System.Numerics;
 
 namespace Geometry;
 
 record Face2(List<Vector2> Vertices, Color Color);
+
+record Face2Indices(bool IsVisible, List<Index> Vertices, Color Color);
+
+record Cell2(List<Vector2> Vertices, List<Face2Indices> FaceIndices)
+{
+    public List<Face2> VisibleFaces
+    {
+        get => FaceIndices
+            .Where(face => face.IsVisible)
+            .Select(face => new Face2(face.Vertices.Select(i => Vertices[i]).ToList(), face.Color))
+            .ToList();
+    }
+}
 
 class Camera3
 {
@@ -95,32 +110,232 @@ class Camera3
         return v1.X * v2.Y - v1.Y * v2.X;
     }
 
-    public List<Face2> ProjectCell(Cell3 cell)
+    public Cell2 ProjectCell(Cell3 cell)
     {
-        return cell.Faces.Select(ProjectFace).Where(f => f != null).ToList();
-    }
-
-    public List<Face2> ProjectCells(List<Cell3> cells)
-    {
-        var faces = cells
-            .OrderByDescending(cell => cell.Vertices.Select(ProjectionDistance).Max())
-            .SelectMany(cell =>
-                cell.Faces.Select(f => (f, ProjectFace(f))).Where(f => f.Item2 != null)
-            )
+        var vertices = cell.Vertices.Select(ProjectPosition).ToList();
+        var faces = cell.FaceIndices
+            .Select(face => new Face2Indices(
+                ComputeNormalValue(vertices, face) >= 0, face.Vertices, face.Color))
             .ToList();
 
-        return shadowFaces(faces);
+        return new Cell2(vertices, faces);
     }
 
-    List<Face2> shadowFaces(List<(Face3, Face2)> faces)
+    static float ComputeNormalValue(List<Vector2> vertices, Face3Indices face)
     {
-        // TODO: shadow faces by projection distances
-        return faces.Select(f => f.Item2).ToList();
+        return ComputeNormalValue(new Face2(face.Vertices.Select(i => vertices[i]).ToList(), face.Color));
+    }
+
+    public List<Cell2> ProjectCells(List<Cell3> cells)
+    {
+        var cellsProj = cells
+            .Select(cell =>
+            {
+                var proj = ProjectCell(cell);
+                var dis = cell.Vertices.Select(ProjectionDistance).ToList();
+                var rng = (dis.Min(), dis.Max());
+                return (cell, proj, dis, rng);
+            })
+            .OrderByDescending(e => e.Item4)
+            .ToList();
+
+        // return cellsProj.Select(elem => elem.Item2).ToList();
+        return TopoSort(cellsProj, Shadow).Select(elem => elem.Item2).ToList();
+    }
+
+    int Shadow(
+        (Cell3, Cell2, List<float>, (float, float)) elem0,
+        (Cell3, Cell2, List<float>, (float, float)) elem1
+    ) {
+        var (cell0, proj0, dis0, rng0) = elem0;
+        var (cell1, proj1, dis1, rng1) = elem1;
+
+        if (rng0.Item2 < rng1.Item1 || rng1.Item2 < rng0.Item1)
+            return 0;
+
+        foreach (var b in Enumerable.Range(0, cell1.FaceIndices.Count))
+        {
+            if (!proj1.FaceIndices[b].IsVisible)
+                continue;
+            var faceb = new Face3(
+                cell1.FaceIndices[b].Normal,
+                cell1.FaceIndices[b].Vertices.Select(i => cell1.Vertices[i]).ToList(),
+                cell1.FaceIndices[b].Color
+                );
+            var facebProj = new Face2(
+                proj1.FaceIndices[b].Vertices.Select(i => proj1.Vertices[i]).ToList(),
+                proj1.FaceIndices[b].Color
+                );
+
+            var xs = facebProj.Vertices.Select(v => v.X).ToList();
+            var ys = facebProj.Vertices.Select(v => v.Y).ToList();
+            var xrng = (xs.Min(), xs.Max());
+            var yrng = (ys.Min(), ys.Max());
+
+            foreach (var a in Enumerable.Range(0, cell0.Vertices.Count))
+            {
+                var disa = dis0[a];
+                var pointa = cell0.Vertices[a];
+                var pointaProj = proj0.Vertices[a];
+
+                if (pointaProj.X < xrng.Item1 || pointaProj.X > xrng.Item2)
+                    continue;
+                if (pointaProj.Y < yrng.Item1 || pointaProj.Y > yrng.Item2)
+                    continue;
+
+                var disb = ProjectToFace(
+                    pointa,
+                    pointaProj,
+                    faceb,
+                    facebProj
+                );
+                if (disb is null)
+                    continue;
+                return disa < disb.Value ? 1 : -1;
+            }
+        }
+
+        foreach (var a in Enumerable.Range(0, cell0.FaceIndices.Count))
+        {
+            if (!proj0.FaceIndices[a].IsVisible)
+                continue;
+            var facea = new Face3(
+                cell0.FaceIndices[a].Normal,
+                cell0.FaceIndices[a].Vertices.Select(i => cell0.Vertices[i]).ToList(),
+                cell0.FaceIndices[a].Color
+                );
+            var faceaProj = new Face2(
+                proj0.FaceIndices[a].Vertices.Select(i => proj0.Vertices[i]).ToList(),
+                proj0.FaceIndices[a].Color
+                );
+
+            var xs = faceaProj.Vertices.Select(v => v.X).ToList();
+            var ys = faceaProj.Vertices.Select(v => v.Y).ToList();
+            var xrng = (xs.Min(), xs.Max());
+            var yrng = (ys.Min(), ys.Max());
+
+            foreach (var b in Enumerable.Range(0, cell1.Vertices.Count))
+            {
+                var disb = dis1[b];
+                var pointb = cell1.Vertices[b];
+                var pointbProj = proj1.Vertices[b];
+
+                if (pointbProj.X < xrng.Item1 || pointbProj.X > xrng.Item2)
+                    continue;
+                if (pointbProj.Y < yrng.Item1 || pointbProj.Y > yrng.Item2)
+                    continue;
+
+                var disa = ProjectToFace(
+                    pointb,
+                    pointbProj,
+                    facea,
+                    faceaProj
+                );
+                if (disa is null)
+                    continue;
+                return disb < disa.Value ? -1 : 1;
+            }
+        }
+
+        return 0;
+    }
+
+    float? ProjectToFace(Vector3 point, Vector2 pointProj, Face3 face, Face2 faceProj)
+    {
+        var planeNullable = face.ComputePlane();
+        if (planeNullable is null)
+            return null;
+        var plane = planeNullable.Value;
+
+        for (var i = 0; i < faceProj.Vertices.Count; i++)
+        {
+            var iprev = i - 1;
+            iprev = iprev < 0 ? faceProj.Vertices.Count - 1 : iprev;
+            var v1 = faceProj.Vertices[iprev];
+            var v2 = faceProj.Vertices[i];
+            var v12 = Vector2.Normalize(v2 - v1);
+            var n = new Vector2(-v12.Y, v12.X);
+            var d = (Vector2.Dot(v1, n) + Vector2.Dot(v2, n)) / 2;
+            if (d > Vector2.Dot(pointProj, n))
+                return null;
+        }
+
+        var dir = float.IsInfinity(FocalLength)
+                ? Looking
+                : Vector3.Normalize(point - FocalPoint);
+        var dis = plane.D - Vector3.Dot(plane.Normal, point);
+        var ratio = dis / Vector3.Dot(plane.Normal, dir);
+        var pointOnPlane = point + dir * ratio;
+        return ProjectionDistance(pointOnPlane);
+    }
+
+    List<T> TopoSort<T>(List<T> elems, Func<T, T, int> hasEdge)
+    {
+        var edges = new HashSet<(int, int)>();
+        foreach (var i in Enumerable.Range(0, elems.Count - 1))
+            foreach (var j in Enumerable.Range(i + 1, elems.Count - i - 1))
+            {
+                var d = hasEdge(elems[i], elems[j]);
+                if (d < 0)
+                    edges.Add((i, j));
+                else if (d > 0)
+                    edges.Add((j, i));
+            }
+
+        var res = new List<T>();
+        var notMin = edges.Select(ij => ij.Item2).ToHashSet();
+        var min = Enumerable.Range(0, elems.Count)
+            .Where(i => !notMin.Contains(i))
+            .ToHashSet();
+
+        while (min.Count > 0)
+        {
+            var i = min.Min();
+            min.Remove(i);
+            res.Add(elems[i]);
+
+            var next = edges.Where(e => e.Item1 == i).Select(e => e.Item2).ToHashSet();
+
+            // trim all edges to minimal elements
+            edges.RemoveWhere(e => e.Item1 == i);
+            var notMin_ = edges.Select(ij => ij.Item2).ToHashSet();
+
+            // find new minimal elements after trimming
+            foreach (var j in next)
+                if (!notMin_.Contains(j))
+                    min.Add(j);
+        }
+
+        // Debug.Assert(res.Count == elems.Count);
+        return res;
     }
 }
 
 record Face3(Vector3 Normal, List<Vector3> Vertices, Color Color)
 {
+    public Plane? ComputePlane()
+    {
+        if (Vertices.Count < 3)
+            return null;
+
+        var v = new List<Vector3>();
+        v.Add(Vertices[0] - Vertices[Vertices.Count - 1]);
+        for (var i = 1; i < Vertices.Count; i++)
+            v.Add(Vertices[i] - Vertices[i - 1]);
+        var w = new Vector3(0, 0, 0);
+        w += Vector3.Cross(v[Vertices.Count - 1], v[0]);
+        for (var i = 1; i < Vertices.Count; i++)
+            w += Vector3.Cross(v[i - 1], v[i]);
+        w = Vector3.Normalize(w);
+
+        float d = 0;
+        foreach (var vertex in Vertices)
+            d += Vector3.Dot(w, vertex);
+        d = d / Vertices.Count;
+
+        return new Plane(w, d);
+    }
+
     public Face3 Transform(float scale)
     {
         var vertices = Vertices.Select(v => v * scale).ToList();

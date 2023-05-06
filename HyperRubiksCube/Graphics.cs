@@ -51,7 +51,7 @@ public class HyperCubeScene : IDrawable
             .Select(HyperCamera.ProjectCell)
             .Where(cell => cell != null)
             .ToList();
-        screen.DrawFaces(Camera.ProjectCells(cubes));
+        screen.DrawFaces(Camera.ProjectCells(cubes).SelectMany(cell => cell.VisibleFaces).ToList());
     }
 
     public void Spin(Vector2 diff)
