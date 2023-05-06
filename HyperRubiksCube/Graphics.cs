@@ -1,4 +1,5 @@
-﻿using Geometry;
+﻿using Utils;
+using Geometry;
 using System.Numerics;
 
 namespace Graphics;
@@ -9,6 +10,7 @@ public class HyperCubeScene : IDrawable
     Camera3 Camera;
     Camera4 HyperCamera;
     List<Cell4> Cells;
+    float Ratio;
 
     public HyperCubeScene()
     {
@@ -22,36 +24,40 @@ public class HyperCubeScene : IDrawable
             screenDistance: 2
         );
 
-        var orientation4 =
-            Matrix4x4.CreateFromYawPitchRoll(
+        HyperCamera = new Camera4(
+            orientation: Matrix4x4Extension.CreateFromYawPitchRollGyro(
                 yaw: float.Pi * 1 / 6,
                 pitch: -float.Pi * 1 / 5,
-                roll: 0
-            ) * Matrix4x4Extension.CreateRotationXY(float.Pi / 3);
-        HyperCamera = new Camera4(
-            orientation: orientation4,
+                roll: 0,
+                gyro: float.Pi / 3
+            ),
             focalLength: -3,
             screenDistance: 2
         );
 
         Cells = HyperCube.makeHyperRubiksCube(0.3f, 0.1f);
+        Ratio = 150;
     }
 
     void IDrawable.Draw(ICanvas canvas, RectF dirtyRect)
     {
-        canvas.FillColor = Colors.DarkGray;
-        canvas.FillRectangle(dirtyRect);
-
-        var screen = new Screen(
-            Canvas: canvas,
-            Center: dirtyRect.Center,
-            Ratio: 150
-        );
         var cubes = Cells
             .Select(HyperCamera.ProjectCell)
             .Where(cell => cell != null)
             .ToList();
-        screen.DrawFaces(Camera.ProjectCells(cubes).SelectMany(cell => cell.VisibleFaces).ToList());
+        var faces = Camera
+            .ProjectCells(cubes)
+            .SelectMany(cell => cell.VisibleFaces)
+            .ToList();
+
+        canvas.FillColor = Colors.DarkGray;
+        canvas.FillRectangle(dirtyRect);
+        var screen = new Screen(
+            Canvas: canvas,
+            Center: dirtyRect.Center,
+            Ratio: Ratio
+        );
+        screen.DrawFaces(faces);
     }
 
     public void Spin(Vector2 diff)
@@ -90,6 +96,40 @@ public class HyperCubeScene : IDrawable
         var rotation = Matrix4x4Extension.Create4DRotationFromAxisAngle(axis, scale);
 
         HyperCamera.Orientation = (rotation * HyperCamera.Orientation).Normalize();
+    }
+}
+
+record Screen(ICanvas Canvas, PointF Center, float Ratio)
+{
+    PointF Convert(Vector2 point)
+    {
+        return new PointF(Center.X + point.X * Ratio, Center.Y - point.Y * Ratio);
+    }
+
+    public void DrawFace(Face2 face)
+    {
+        if (face == null)
+            return;
+
+        var path = new PathF();
+        if (face.Vertices.Any())
+            path.MoveTo(Convert(face.Vertices.First()));
+        foreach (var curr in face.Vertices.Skip(1))
+            path.LineTo(Convert(curr));
+        path.LineTo(Convert(face.Vertices.First()));
+        Canvas.FillColor = face.Color;
+        Canvas.FillPath(path);
+        Canvas.StrokeColor = Colors.Black;
+        Canvas.StrokeSize = 1;
+        Canvas.DrawPath(path);
+    }
+
+    public void DrawFaces(List<Face2> faces)
+    {
+        foreach (var face in faces)
+        {
+            DrawFace(face);
+        }
     }
 }
 
@@ -192,39 +232,5 @@ public partial class HyperCubeView : GraphicsView
     void OnTappedSecondary(object sender, TappedEventArgs eventArgs)
     {
         Mode = Mode == ControlMode.SpinMode ? ControlMode.GyrospinMode : ControlMode.SpinMode;
-    }
-}
-
-record Screen(ICanvas Canvas, PointF Center, float Ratio)
-{
-    public PointF Convert(Vector2 point)
-    {
-        return new PointF(Center.X + point.X * Ratio, Center.Y - point.Y * Ratio);
-    }
-
-    public void DrawFace(Face2 face)
-    {
-        if (face == null)
-            return;
-
-        var path = new PathF();
-        if (face.Vertices.Any())
-            path.MoveTo(Convert(face.Vertices.First()));
-        foreach (var curr in face.Vertices.Skip(1))
-            path.LineTo(Convert(curr));
-        path.LineTo(Convert(face.Vertices.First()));
-        Canvas.FillColor = face.Color;
-        Canvas.FillPath(path);
-        Canvas.StrokeColor = Colors.Black;
-        Canvas.StrokeSize = 1;
-        Canvas.DrawPath(path);
-    }
-
-    public void DrawFaces(List<Face2> faces)
-    {
-        foreach (var face in faces)
-        {
-            DrawFace(face);
-        }
     }
 }
