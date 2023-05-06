@@ -35,7 +35,7 @@ public class HyperCubeScene : IDrawable
             screenDistance: 2
         );
 
-        Cells = HyperCube.makeHyperRubiksCube(0.3f, 0.1f);
+        Cells = HyperCubeBuilder.MakeHyperRubiksCube(0.3f, 0.1f);
         Ratio = 150;
     }
 
@@ -47,7 +47,8 @@ public class HyperCubeScene : IDrawable
             .ToList();
         var faces = Camera
             .ProjectCells(cubes)
-            .SelectMany(cell => cell.VisibleFaces)
+            .SelectMany(cell => cell.Faces)
+            .Where(cell => cell is not null)
             .ToList();
 
         canvas.FillColor = Colors.DarkGray;

@@ -6,15 +6,16 @@ namespace Geometry;
 
 record Face2(List<Vector2> Vertices, Color Color);
 
-record Face2Indices(bool IsVisible, List<Index> Vertices, Color Color);
+record RawFace(List<int> Vertices, Color Color);
 
-record Cell2(List<Vector2> Vertices, List<Face2Indices> FaceIndices)
+record Cell2(List<Vector2> Vertices, List<RawFace> RawFaces)
 {
-    public List<Face2> VisibleFaces
+    public List<Face2> Faces
     {
-        get => FaceIndices
-            .Where(face => face.IsVisible)
-            .Select(face => new Face2(face.Vertices.Select(i => Vertices[i]).ToList(), face.Color))
+        get => RawFaces
+            .Select(face => face is null
+                            ? null
+                            : new Face2(face.Vertices.Select(i => Vertices[i]).ToList(), face.Color))
             .ToList();
     }
 }
@@ -78,9 +79,6 @@ class Camera3
 
     public Face2 ProjectFace(Face3 face)
     {
-        // if (Vector3.Dot(face.Normal, Looking) > 0)
-        //     return null;
-
         var vertices = face.Vertices.Select(ProjectPosition).ToList();
         var faceProj = new Face2(vertices, face.Color);
         if (ComputeNormalValue(faceProj) < 0)
@@ -111,16 +109,19 @@ class Camera3
 
     public Cell2 ProjectCell(Cell3 cell)
     {
+        if (cell is null)
+            return null;
         var vertices = cell.Vertices.Select(ProjectPosition).ToList();
-        var faces = cell.FaceIndices
-            .Select(face => new Face2Indices(
-                ComputeNormalValue(vertices, face) >= 0, face.Vertices, face.Color))
+        var faces = cell.RawFaces
+            .Select(face => ComputeNormalValue(vertices, face) >= 0
+                            ? new RawFace(face.Vertices, face.Color)
+                            : null)
             .ToList();
 
         return new Cell2(vertices, faces);
     }
 
-    static float ComputeNormalValue(List<Vector2> vertices, Face3Indices face)
+    static float ComputeNormalValue(List<Vector2> vertices, RawFace face)
     {
         return ComputeNormalValue(new Face2(face.Vertices.Select(i => vertices[i]).ToList(), face.Color));
     }
@@ -128,6 +129,7 @@ class Camera3
     public List<Cell2> ProjectCells(List<Cell3> cells)
     {
         var cellsProj = cells
+            .Where(cell => cell is not null)
             .Select(cell =>
             {
                 var proj = ProjectCell(cell);
@@ -152,17 +154,18 @@ class Camera3
         if (rng0.Item2 < rng1.Item1 || rng1.Item2 < rng0.Item1)
             return 0;
 
-        foreach (var b in Enumerable.Range(0, cell1.FaceIndices.Count))
+        foreach (var b in Enumerable.Range(0, cell1.RawFaces.Count))
         {
-            if (!proj1.FaceIndices[b].IsVisible)
+            if (proj1.RawFaces[b] is null)
                 continue;
+
             var faceb = new Face3(
-                cell1.FaceIndices[b].Vertices.Select(i => cell1.Vertices[i]).ToList(),
-                cell1.FaceIndices[b].Color
+                cell1.RawFaces[b].Vertices.Select(i => cell1.Vertices[i]).ToList(),
+                cell1.RawFaces[b].Color
                 );
             var facebProj = new Face2(
-                proj1.FaceIndices[b].Vertices.Select(i => proj1.Vertices[i]).ToList(),
-                proj1.FaceIndices[b].Color
+                proj1.RawFaces[b].Vertices.Select(i => proj1.Vertices[i]).ToList(),
+                proj1.RawFaces[b].Color
                 );
 
             var xs = facebProj.Vertices.Select(v => v.X).ToList();
@@ -181,29 +184,30 @@ class Camera3
                 if (pointaProj.Y < yrng.Item1 || pointaProj.Y > yrng.Item2)
                     continue;
 
-                var disb = ProjectToFace(
+                var pointab = ProjectPointToFace(
                     pointa,
                     pointaProj,
                     faceb,
                     facebProj
                 );
-                if (disb is null)
+                if (pointab is null)
                     continue;
-                return disa < disb.Value ? 1 : -1;
+                return disa < ProjectionDistance(pointab.Value) ? 1 : -1;
             }
         }
 
-        foreach (var a in Enumerable.Range(0, cell0.FaceIndices.Count))
+        foreach (var a in Enumerable.Range(0, cell0.RawFaces.Count))
         {
-            if (!proj0.FaceIndices[a].IsVisible)
+            if (proj0.RawFaces[a] is null)
                 continue;
+
             var facea = new Face3(
-                cell0.FaceIndices[a].Vertices.Select(i => cell0.Vertices[i]).ToList(),
-                cell0.FaceIndices[a].Color
+                cell0.RawFaces[a].Vertices.Select(i => cell0.Vertices[i]).ToList(),
+                cell0.RawFaces[a].Color
                 );
             var faceaProj = new Face2(
-                proj0.FaceIndices[a].Vertices.Select(i => proj0.Vertices[i]).ToList(),
-                proj0.FaceIndices[a].Color
+                proj0.RawFaces[a].Vertices.Select(i => proj0.Vertices[i]).ToList(),
+                proj0.RawFaces[a].Color
                 );
 
             var xs = faceaProj.Vertices.Select(v => v.X).ToList();
@@ -222,22 +226,22 @@ class Camera3
                 if (pointbProj.Y < yrng.Item1 || pointbProj.Y > yrng.Item2)
                     continue;
 
-                var disa = ProjectToFace(
+                var pointba = ProjectPointToFace(
                     pointb,
                     pointbProj,
                     facea,
                     faceaProj
                 );
-                if (disa is null)
+                if (pointba is null)
                     continue;
-                return disb < disa.Value ? -1 : 1;
+                return disb < ProjectionDistance(pointba.Value) ? -1 : 1;
             }
         }
 
         return 0;
     }
 
-    float? ProjectToFace(Vector3 point, Vector2 pointProj, Face3 face, Face2 faceProj)
+    Vector3? ProjectPointToFace(Vector3 point, Vector2 pointProj, Face3 face, Face2 faceProj)
     {
         var planeNullable = face.ComputePlane();
         if (planeNullable is null)
@@ -263,7 +267,7 @@ class Camera3
         var dis = plane.D - Vector3.Dot(plane.Normal, point);
         var ratio = dis / Vector3.Dot(plane.Normal, dir);
         var pointOnPlane = point + dir * ratio;
-        return ProjectionDistance(pointOnPlane);
+        return pointOnPlane;
     }
 }
 
@@ -293,17 +297,15 @@ record Face3(List<Vector3> Vertices, Color Color)
     }
 }
 
-record Face3Indices(List<Index> Vertices, Color Color);
+record RawCorner(int Vertex, List<(int, int)> Angles);
 
-record Corner3Indices(Index Vertex, List<(Index, Index)> FaceVertices);
-
-record Cell3(List<Vector3> Vertices, List<Face3Indices> FaceIndices, List<Corner3Indices> CornerIndices)
+record Cell3(List<Vector3> Vertices, List<RawFace> RawFaces, List<RawCorner> RawCorners)
 {
     public List<Face3> Faces
     {
         get
         {
-            return FaceIndices.Select(
+            return RawFaces.Select(
                 faceIndices => new Face3(
                     Vertices: faceIndices.Vertices.Select(i => Vertices[i]).ToList(),
                     Color: faceIndices.Color
@@ -312,97 +314,12 @@ record Cell3(List<Vector3> Vertices, List<Face3Indices> FaceIndices, List<Corner
         }
     }
 
-    public static Cell3 Cube;
-
-    static Cell3()
-    {
-        var cubeVertices = new List<Vector3>();
-        var signs = new float[] { +1, -1 };
-        foreach (var i in signs)
-            foreach (var j in signs)
-                foreach (var k in signs)
-                    cubeVertices.Add(new(i, j, k));
-        var cubeFaceIndices = new List<(Vector3, Face3Indices)>()
-        {
-            (new Vector3( 1, 0, 0), new Face3Indices(new List<Index> {
-                4*0+2*0+1*0,
-                4*0+2*1+1*0,
-                4*0+2*1+1*1,
-                4*0+2*0+1*1,
-            }, Colors.Blue)),
-            (new Vector3(-1, 0, 0), new Face3Indices(new List<Index> {
-                4*1+2*0+1*0,
-                4*1+2*0+1*1,
-                4*1+2*1+1*1,
-                4*1+2*1+1*0,
-            }, Colors.Green)),
-            (new Vector3( 0, 1, 0), new Face3Indices(new List<Index> {
-                2*0+1*0+4*0,
-                2*0+1*1+4*0,
-                2*0+1*1+4*1,
-                2*0+1*0+4*1,
-            }, Colors.White)),
-            (new Vector3( 0,-1, 0), new Face3Indices(new List<Index> {
-                2*1+1*0+4*0,
-                2*1+1*0+4*1,
-                2*1+1*1+4*1,
-                2*1+1*1+4*0,
-            }, Colors.Yellow)),
-            (new Vector3( 0, 0, 1), new Face3Indices(new List<Index> {
-                1*0+4*0+2*0,
-                1*0+4*1+2*0,
-                1*0+4*1+2*1,
-                1*0+4*0+2*1,
-            }, Colors.Red)),
-            (new Vector3( 0, 0,-1), new Face3Indices(new List<Index> {
-                1*1+4*0+2*0,
-                1*1+4*0+2*1,
-                1*1+4*1+2*1,
-                1*1+4*1+2*0,
-            }, Colors.Orange)),
-        };
-
-        var cornerIndices =
-            Enumerable.Range(0, cubeVertices.Count)
-            .Select(k =>
-            {
-                var vertex = cubeVertices[k];
-                var corner = Enumerable.Range(0, cubeFaceIndices.Count)
-                    .Where(i =>
-                    {
-                        var (normal, f) = cubeFaceIndices[i];
-                        return normal.X == vertex.X
-                            || normal.Y == vertex.Y
-                            || normal.Z == vertex.Z;
-                    })
-                    .Select(i =>
-                    {
-                        var j = cubeFaceIndices[i].Item2.Vertices.FindIndex(j => k == j.Value);
-                        Debug.Assert(j != -1);
-                        return ((Index) i, (Index) j);
-                    })
-                    .ToList();
-
-                Debug.Assert(corner.Count == 3);
-                var normals = corner
-                    .Select(ij => cubeFaceIndices[ij.Item1].Item1)
-                    .ToList();
-                var vol = Vector3.Dot(Vector3.Cross(normals[0], normals[1]), normals[2]);
-                if (vol > 0)
-                    (corner[1], corner[2]) = (corner[2], corner[1]);
-                return new Corner3Indices(k, corner);
-            })
-            .ToList();
-
-        Cube = new Cell3(cubeVertices, cubeFaceIndices.Select(e => e.Item2).ToList(), cornerIndices);
-    }
-
     public Cell3 Transform(float scale)
     {
         return new Cell3(
             Vertices.Select(v => v * scale).ToList(),
-            FaceIndices,
-            CornerIndices
+            RawFaces,
+            RawCorners
         );
     }
 
@@ -410,8 +327,8 @@ record Cell3(List<Vector3> Vertices, List<Face3Indices> FaceIndices, List<Corner
     {
         return new Cell3(
             Vertices.Select(v => Vector3.Transform(v, rotation)).ToList(),
-            FaceIndices,
-            CornerIndices
+            RawFaces,
+            RawCorners
         );
     }
 
@@ -421,8 +338,8 @@ record Cell3(List<Vector3> Vertices, List<Face3Indices> FaceIndices, List<Corner
             Vertices
             .Select(v => Vector3.Transform(v, rotation) + translation)
             .ToList(),
-            FaceIndices,
-            CornerIndices
+            RawFaces,
+            RawCorners
         );
     }
 }
@@ -514,14 +431,10 @@ class Camera4
 
     public Cell3 ProjectCell(Cell4 cell)
     {
-        // if (Vector4.Dot(cell.Normal, Looking) > 0)
-        //     return null;
-
+        if (cell is null)
+            return null;
         var vertices = cell.Vertices.Select(ProjectPosition).ToList();
-        var faceIndices = cell.FaceIndices
-            .Select(f => new Face3Indices(f.Vertices, cell.Color))
-            .ToList();
-        var cellProj = new Cell3(vertices, faceIndices, cell.CornerIndices);
+        var cellProj = new Cell3(vertices, cell.RawFaces, cell.RawCorners);
         if (ComputeNormalValue(cellProj) < 0)
             return null;
         return cellProj;
@@ -530,14 +443,14 @@ class Camera4
     static float ComputeNormalValue(Cell3 cell)
     {
         float w = 0;
-        foreach (var corner in cell.CornerIndices)
+        foreach (var corner in cell.RawCorners)
         {
             var vertex = cell.Vertices[corner.Vertex];
-            var edges = corner.FaceVertices
+            var edges = corner.Angles
                 .Select(ij =>
                 {
-                    var face = cell.FaceIndices[ij.Item1];
-                    var j = ij.Item2.Value + 1;
+                    var face = cell.RawFaces[ij.Item1];
+                    var j = ij.Item2 + 1;
                     j = j < face.Vertices.Count ? j : 0;
                     var vertexNext = cell.Vertices[face.Vertices[j]];
                     return vertexNext - vertex;
@@ -575,17 +488,14 @@ class Camera4
     }
 }
 
-record Face4Indices(List<Index> Vertices);
-
-record Cell4(Vector4 Normal, List<Vector4> Vertices, List<Face4Indices> FaceIndices, List<Corner3Indices> CornerIndices, Color Color)
+record Cell4(List<Vector4> Vertices, List<RawFace> RawFaces, List<RawCorner> RawCorners, Color Color)
 {
     public Cell4 Transform(float scale)
     {
         return new Cell4(
-            Normal,
             Vertices.Select(v => v * scale).ToList(),
-            FaceIndices,
-            CornerIndices,
+            RawFaces,
+            RawCorners,
             Color
         );
     }
@@ -593,10 +503,9 @@ record Cell4(Vector4 Normal, List<Vector4> Vertices, List<Face4Indices> FaceIndi
     public Cell4 Transform(Matrix4x4 rotation)
     {
         return new Cell4(
-            Vector4.Transform(Normal, rotation),
             Vertices.Select(v => Vector4.Transform(v, rotation)).ToList(),
-            FaceIndices,
-            CornerIndices,
+            RawFaces,
+            RawCorners,
             Color
         );
     }
@@ -604,120 +513,194 @@ record Cell4(Vector4 Normal, List<Vector4> Vertices, List<Face4Indices> FaceIndi
     public Cell4 Transform(Matrix4x4 rotation, Vector4 translation)
     {
         return new Cell4(
-            Vector4.Transform(Normal, rotation),
             Vertices
             .Select(v => Vector4.Transform(v, rotation) + translation)
             .ToList(),
-            FaceIndices,
-            CornerIndices,
+            RawFaces,
+            RawCorners,
             Color
         );
     }
 }
 
-static class HyperCube
+static class HyperCubeBuilder
 {
-    public static List<Cell4> makeHyperCube(float cellHeight)
+    public static Cell3 MakeCube()
     {
-        var cube = Cell3.Cube;
+        var cubeVertices = new List<Vector3>();
+        var signs = new float[] { +1, -1 };
+        foreach (var i in signs)
+            foreach (var j in signs)
+                foreach (var k in signs)
+                    cubeVertices.Add(new(i, j, k));
+        var cubeRawFaces = new List<(Vector3, RawFace)>()
+        {
+            (new Vector3( 1, 0, 0), new RawFace(new List<int> {
+                4*0+2*0+1*0,
+                4*0+2*1+1*0,
+                4*0+2*1+1*1,
+                4*0+2*0+1*1,
+            }, Colors.Blue)),
+            (new Vector3(-1, 0, 0), new RawFace(new List<int> {
+                4*1+2*0+1*0,
+                4*1+2*0+1*1,
+                4*1+2*1+1*1,
+                4*1+2*1+1*0,
+            }, Colors.Green)),
+            (new Vector3( 0, 1, 0), new RawFace(new List<int> {
+                2*0+1*0+4*0,
+                2*0+1*1+4*0,
+                2*0+1*1+4*1,
+                2*0+1*0+4*1,
+            }, Colors.White)),
+            (new Vector3( 0,-1, 0), new RawFace(new List<int> {
+                2*1+1*0+4*0,
+                2*1+1*0+4*1,
+                2*1+1*1+4*1,
+                2*1+1*1+4*0,
+            }, Colors.Yellow)),
+            (new Vector3( 0, 0, 1), new RawFace(new List<int> {
+                1*0+4*0+2*0,
+                1*0+4*1+2*0,
+                1*0+4*1+2*1,
+                1*0+4*0+2*1,
+            }, Colors.Red)),
+            (new Vector3( 0, 0,-1), new RawFace(new List<int> {
+                1*1+4*0+2*0,
+                1*1+4*0+2*1,
+                1*1+4*1+2*1,
+                1*1+4*1+2*0,
+            }, Colors.Orange)),
+        };
+
+        var cornerIndices =
+            Enumerable.Range(0, cubeVertices.Count)
+            .Select(k =>
+            {
+                var vertex = cubeVertices[k];
+                var corner = Enumerable.Range(0, cubeRawFaces.Count)
+                    .Where(i =>
+                    {
+                        var (normal, f) = cubeRawFaces[i];
+                        return normal.X == vertex.X
+                            || normal.Y == vertex.Y
+                            || normal.Z == vertex.Z;
+                    })
+                    .Select(i =>
+                    {
+                        var j = cubeRawFaces[i].Item2.Vertices.FindIndex(j => k == j);
+                        Debug.Assert(j != -1);
+                        return (i, j);
+                    })
+                    .ToList();
+
+                Debug.Assert(corner.Count == 3);
+                var normals = corner
+                    .Select(ij => cubeRawFaces[ij.Item1].Item1)
+                    .ToList();
+                var vol = Vector3.Dot(Vector3.Cross(normals[0], normals[1]), normals[2]);
+                if (vol > 0)
+                    (corner[1], corner[2]) = (corner[2], corner[1]);
+                return new RawCorner(k, corner);
+            })
+            .ToList();
+
+        return new Cell3(cubeVertices, cubeRawFaces.Select(e => e.Item2).ToList(), cornerIndices);
+    }
+
+    public static List<Cell4> MakeHyperCube(float cellHeight)
+    {
+        var cube = MakeCube();
 
         return new List<Cell4> {
             new Cell4(
-                Normal: new( 1, 0, 0, 0),
                 Vertices: cube.Vertices
                     .Select(v => new Vector4(1 + cellHeight, v.Z, v.Y, v.X))
                     .ToList(),
-                FaceIndices: cube.FaceIndices
-                    .Select(f => new Face4Indices(f.Vertices))
+                RawFaces: cube.RawFaces
+                    .Select(f => new RawFace(f.Vertices, Colors.Blue))
                     .ToList(),
-                CornerIndices: cube.CornerIndices,
+                RawCorners: cube.RawCorners,
                 Color: Colors.Blue
             ),
             new Cell4(
-                Normal: new(-1, 0, 0, 0),
                 Vertices: cube.Vertices
                     .Select(v => new Vector4(- 1 - cellHeight, v.X, v.Y, v.Z))
                     .ToList(),
-                FaceIndices: cube.FaceIndices
-                    .Select(f => new Face4Indices(f.Vertices))
+                RawFaces: cube.RawFaces
+                    .Select(f => new RawFace(f.Vertices, Colors.Green))
                     .ToList(),
-                CornerIndices: cube.CornerIndices,
+                RawCorners: cube.RawCorners,
                 Color: Colors.Green
             ),
             new Cell4(
-                Normal: new( 0, 1, 0, 0),
                 Vertices: cube.Vertices
                     .Select(v => new Vector4(v.X, 1 + cellHeight, v.Y, v.Z))
                     .ToList(),
-                FaceIndices: cube.FaceIndices
-                    .Select(f => new Face4Indices(f.Vertices))
+                RawFaces: cube.RawFaces
+                    .Select(f => new RawFace(f.Vertices, Colors.White))
                     .ToList(),
-                CornerIndices: cube.CornerIndices,
+                RawCorners: cube.RawCorners,
                 Color: Colors.White
             ),
             new Cell4(
-                Normal: new( 0,-1, 0, 0),
                 Vertices: cube.Vertices
                     .Select(v => new Vector4(v.Z, -1 - cellHeight, v.Y, v.X))
                     .ToList(),
-                FaceIndices: cube.FaceIndices
-                    .Select(f => new Face4Indices(f.Vertices))
+                RawFaces: cube.RawFaces
+                    .Select(f => new RawFace(f.Vertices, Colors.Yellow))
                     .ToList(),
-                CornerIndices: cube.CornerIndices,
+                RawCorners: cube.RawCorners,
                 Color: Colors.Yellow
             ),
             new Cell4(
-                Normal: new( 0, 0, 1, 0),
                 Vertices: cube.Vertices
                     .Select(v => new Vector4(v.Z, v.Y, 1 + cellHeight, v.X))
                     .ToList(),
-                FaceIndices: cube.FaceIndices
-                    .Select(f => new Face4Indices(f.Vertices))
+                RawFaces: cube.RawFaces
+                    .Select(f => new RawFace(f.Vertices, Colors.Red))
                     .ToList(),
-                CornerIndices: cube.CornerIndices,
+                RawCorners: cube.RawCorners,
                 Color: Colors.Red
             ),
             new Cell4(
-                Normal: new( 0, 0,-1, 0),
                 Vertices: cube.Vertices
                     .Select(v => new Vector4(v.X, v.Y, -1 - cellHeight, v.Z))
                     .ToList(),
-                FaceIndices: cube.FaceIndices
-                    .Select(f => new Face4Indices(f.Vertices))
+                RawFaces: cube.RawFaces
+                    .Select(f => new RawFace(f.Vertices, Colors.Orange))
                     .ToList(),
-                CornerIndices: cube.CornerIndices,
+                RawCorners: cube.RawCorners,
                 Color: Colors.Orange
             ),
             new Cell4(
-                Normal: new( 0, 0, 0, 1),
                 Vertices: cube.Vertices
                     .Select(v => new Vector4(v.X, v.Y, v.Z, 1 + cellHeight))
                     .ToList(),
-                FaceIndices: cube.FaceIndices
-                    .Select(f => new Face4Indices(f.Vertices))
+                RawFaces: cube.RawFaces
+                    .Select(f => new RawFace(f.Vertices, Colors.Purple))
                     .ToList(),
-                CornerIndices: cube.CornerIndices,
+                RawCorners: cube.RawCorners,
                 Color: Colors.Purple
             ),
             new Cell4(
-                Normal: new( 0, 0, 0,-1),
                 Vertices: cube.Vertices
                     .Select(v => new Vector4(v.Z, v.Y, v.X, -1 - cellHeight))
                     .ToList(),
-                FaceIndices: cube.FaceIndices
-                    .Select(f => new Face4Indices(f.Vertices))
+                RawFaces: cube.RawFaces
+                    .Select(f => new RawFace(f.Vertices, Colors.Pink))
                     .ToList(),
-                CornerIndices: cube.CornerIndices,
+                RawCorners: cube.RawCorners,
                 Color: Colors.Pink
             ),
         };
     }
 
-    public static List<Cell4> makeHyperRubiksCube(float gapWidth, float cellHeight)
+    public static List<Cell4> MakeHyperRubiksCube(float gapWidth, float cellHeight)
     {
         var r = (1 + gapWidth) / 3;
         var grid = new List<float> { -r, 0, r };
-        var cube0 = Cell3.Cube.Transform((1 - 2 * gapWidth) / 3);
+        var cube0 = MakeCube().Transform((1 - 2 * gapWidth) / 3);
         var cubes =
             from x in grid
             from y in grid
@@ -729,91 +712,83 @@ static class HyperCube
         foreach (var cube in cubes)
         {
             res.Add(new Cell4(
-                Normal: new( 1, 0, 0, 0),
                 Vertices: cube.Vertices
                     .Select(v => new Vector4(1 + cellHeight, v.Z, v.Y, v.X))
                     .ToList(),
-                FaceIndices: cube.FaceIndices
-                    .Select(f => new Face4Indices(f.Vertices))
+                RawFaces: cube.RawFaces
+                    .Select(f => new RawFace(f.Vertices, Colors.Blue))
                     .ToList(),
-                CornerIndices: cube.CornerIndices,
+                RawCorners: cube.RawCorners,
                 Color: Colors.Blue
             ));
             res.Add(new Cell4(
-                Normal: new(-1, 0, 0, 0),
                 Vertices: cube.Vertices
                     .Select(v => new Vector4(-1 - cellHeight, v.X, v.Y, v.Z))
                     .ToList(),
-                FaceIndices: cube.FaceIndices
-                    .Select(f => new Face4Indices(f.Vertices))
+                RawFaces: cube.RawFaces
+                    .Select(f => new RawFace(f.Vertices, Colors.Green))
                     .ToList(),
-                CornerIndices: cube.CornerIndices,
+                RawCorners: cube.RawCorners,
                 Color: Colors.Green
             ));
             res.Add(new Cell4(
-                Normal: new(0, 1, 0, 0),
                 Vertices: cube.Vertices
                     .Select(v => new Vector4(v.X, 1 + cellHeight, v.Y, v.Z))
                     .ToList(),
-                FaceIndices: cube.FaceIndices
-                    .Select(f => new Face4Indices(f.Vertices))
+                RawFaces: cube.RawFaces
+                    .Select(f => new RawFace(f.Vertices, Colors.White))
                     .ToList(),
-                CornerIndices: cube.CornerIndices,
+                RawCorners: cube.RawCorners,
                 Color: Colors.White
             ));
             res.Add(new Cell4(
-                Normal: new(0, -1, 0, 0),
                 Vertices: cube.Vertices
                     .Select(v => new Vector4(v.Z, -1 - cellHeight, v.Y, v.X))
                     .ToList(),
-                FaceIndices: cube.FaceIndices
-                    .Select(f => new Face4Indices(f.Vertices))
+                RawFaces: cube.RawFaces
+                    .Select(f => new RawFace(f.Vertices, Colors.Yellow))
                     .ToList(),
-                CornerIndices: cube.CornerIndices,
+                RawCorners: cube.RawCorners,
                 Color: Colors.Yellow
             ));
             res.Add(new Cell4(
-                Normal: new(0, 0, 1, 0),
                 Vertices: cube.Vertices
                     .Select(v => new Vector4(v.Z, v.Y, 1 + cellHeight, v.X))
                     .ToList(),
-                FaceIndices: cube.FaceIndices
-                    .Select(f => new Face4Indices(f.Vertices))
+                RawFaces: cube.RawFaces
+                    .Select(f => new RawFace(f.Vertices, Colors.Red))
                     .ToList(),
-                CornerIndices: cube.CornerIndices,
+                RawCorners: cube.RawCorners,
                 Color: Colors.Red
             ));
             res.Add(new Cell4(
-                Normal: new(0, 0, -1, 0),
                 Vertices: cube.Vertices
                     .Select(v => new Vector4(v.X, v.Y, -1 - cellHeight, v.Z))
                     .ToList(),
-                FaceIndices: cube.FaceIndices
-                    .Select(f => new Face4Indices(f.Vertices))
+                RawFaces: cube.RawFaces
+                    .Select(f => new RawFace(f.Vertices, Colors.Orange))
                     .ToList(),
-                CornerIndices: cube.CornerIndices,
+                RawCorners: cube.RawCorners,
                 Color: Colors.Orange
             ));
             res.Add(new Cell4(
-                Normal: new(0, 0, 0, 1),
                 Vertices: cube.Vertices
                     .Select(v => new Vector4(v.X, v.Y, v.Z, 1 + cellHeight))
                     .ToList(),
-                FaceIndices: cube.FaceIndices
-                    .Select(f => new Face4Indices(f.Vertices))
+                RawFaces: cube.RawFaces
+                    .Select(f => new RawFace(f.Vertices, Colors.Purple))
                     .ToList(),
-                CornerIndices: cube.CornerIndices,
+                RawCorners: cube.RawCorners,
                 Color: Colors.Purple
             ));
             res.Add(new Cell4(
-                Normal: new(0, 0, 0, -1),
                 Vertices: cube.Vertices
                     .Select(v => new Vector4(v.Z, v.Y, v.X, -1 - cellHeight))
                     .ToList(),
-                FaceIndices: cube.FaceIndices
-                    .Select(f => new Face4Indices(f.Vertices))
+                RawFaces: cube.RawFaces
+                    .Select(f => new RawFace(f.Vertices, Colors.Pink))
                     .ToList(),
-                CornerIndices: cube.CornerIndices,
+                RawCorners: cube.RawCorners,
                 Color: Colors.Pink
             ));
         }
