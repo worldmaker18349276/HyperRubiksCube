@@ -306,10 +306,12 @@ record Cell3(List<Vector3> Vertices, List<RawFace> RawFaces, List<RawCorner> Raw
         get
         {
             return RawFaces.Select(
-                faceIndices => new Face3(
-                    Vertices: faceIndices.Vertices.Select(i => Vertices[i]).ToList(),
-                    Color: faceIndices.Color
-                )
+                face => face is null
+                        ? null
+                        : new Face3(
+                            Vertices: face.Vertices.Select(i => Vertices[i]).ToList(),
+                            Color: face.Color
+                        )
             ).ToList();
         }
     }
@@ -573,7 +575,7 @@ static class HyperCubeBuilder
             }, Colors.Orange)),
         };
 
-        var cornerIndices =
+        var cubeRawCorners =
             Enumerable.Range(0, cubeVertices.Count)
             .Select(k =>
             {
@@ -605,7 +607,7 @@ static class HyperCubeBuilder
             })
             .ToList();
 
-        return new Cell3(cubeVertices, cubeRawFaces.Select(e => e.Item2).ToList(), cornerIndices);
+        return new Cell3(cubeVertices, cubeRawFaces.Select(e => e.Item2).ToList(), cubeRawCorners);
     }
 
     public static List<Cell4> MakeHyperCube(float cellHeight)
